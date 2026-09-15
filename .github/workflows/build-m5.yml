@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M6
+name: Build EldenWorld Core M6.1 Final
 on:
   workflow_dispatch:
   push:
@@ -20,52 +20,57 @@ jobs:
           cat source_parts/m3_*.b64 > m3.b64
           base64 -d m3.b64 > m3.zip
           unzip -q m3.zip -d m5
-      - name: Apply safety foundation and M6 version
+          cat ci/m62_src_*.b64 > /tmp/m62.b64
+          base64 -d /tmp/m62.b64 > /tmp/m62.tar.gz
+          mkdir -p /tmp/m62 && tar -xzf /tmp/m62.tar.gz -C /tmp/m62
+      - name: Apply safety foundation and final version
         run: |
           python3 - <<'PY'
           from pathlib import Path
           r=Path('m5')
           p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java';s=p.read_text();s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }');p.write_text(s)
           p=r/'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java';s=p.read_text();s=s.replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1);p.write_text(s)
-          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6'))
-          p=r/'build.gradle';p.write_text(p.read_text().replace('archivesName = "EldenWorld-Core-${mod_version}"','archivesName = "EldenWorld-Core"'))
+          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1-final'))
           PY
-      - name: Add M6 systems and fixed trees
+      - name: Add mod-integrated specialization systems
         run: |
           mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
-          cp ci/m5_java/SpecializationIds.java ci/m5_java/WeaponMasteryEvents.java ci/m5_java/PetMasteryEvents.java m5/src/main/java/com/eldenworld/core/specialization/
-          cp ci/m5_java/WorldScalingEvents.java m5/src/main/java/com/eldenworld/core/balance/
-          python3 ci/generate_m5_trees.py m5
+          cp /tmp/m62/FinalSpecializationEventsV2.java /tmp/m62/FinalSpecializationSpellEventsV2.java m5/src/main/java/com/eldenworld/core/specialization/
+          cp /tmp/m62/WorldScalingEvents.java m5/src/main/java/com/eldenworld/core/balance/
+          python3 /tmp/m62/generate_m61_trees.py m5 /tmp/m62/m6_specializations.json
           test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 396
           test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
-      - name: Build M6
+          test $(find m5/src/main/resources/data/eldenworld_core/skill_requirements -name '*.json' | wc -l) -eq 396
+      - name: Build M6.1 Final
         working-directory: m5
         run: gradle build --stacktrace
-      - name: Package M6 datapack
+      - name: Package final datapack
         run: |
-          rm -rf datapack && mkdir -p datapack/data/eldenworld
+          rm -rf datapack && mkdir -p datapack/data/eldenworld datapack/data/eldenworld_core
           cp -r m5/src/main/resources/data/eldenworld/skills datapack/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld/skill_trees datapack/data/eldenworld/
-          cat > datapack/pack.mcmeta <<'EOF'
-          {"pack":{"pack_format":15,"description":"EldenWorld M6 — fixed 8-node specialization branches, level 150"}}
-          EOF
-          (cd datapack && zip -qr ../EldenWorld_Passive_Tree_M6_1.zip .)
-      - name: Generate specialization guide
+          cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements datapack/data/eldenworld_core/
+          printf '%s\n' '{"pack":{"pack_format":15,"description":"EldenWorld M6.1 Final - mod-integrated specializations and Mastery tradeoffs"}}' > datapack/pack.mcmeta
+          (cd datapack && zip -qr ../EldenWorld-Passive-Tree-M6.1-Final.zip .)
+      - name: Validate final descriptions
         run: |
-          cat > EldenWorld_M6_Specializations.md <<'EOF'
-          # EldenWorld M6 — fixed specialization layout
-          Every specialization branch follows exactly:
-          START -> STAT I -> STAT II -> SPECIALIZATION -> STAT III -> STAT IV -> BIG STAT -> MASTERY.
-
-          Specialization is one simple ability/effect. Mastery is a slightly stronger ability or one additional simple effect plus a real downside. No extra mini-systems are introduced only for flavor.
-
-          The 54 specializations remain grouped under the 18 keystone trees for Rogue, Warrior, Ranger, Mage, Builder and Adventurer. The datapack contains the fixed progression skeleton; bespoke mod-powered ability hooks are implemented in Core and must correspond to the design specification rather than placeholders.
-          EOF
+          python3 - <<'PY'
+          import json,glob
+          fs=glob.glob('m5/src/main/resources/data/eldenworld/skills/*.json'); assert len(fs)==396
+          specs=masters=0
+          for f in fs:
+            d=json.load(open(f)); p=d['id']
+            specs += p.endswith('/specialization')
+            if p.endswith('/mastery'):
+              masters += 1
+              assert 'Цена' in ' '.join(x.get('text','') for x in d.get('description',[])), p
+          assert specs==54 and masters==54,(specs,masters)
+          print('validated',len(fs),'skills',specs,'specializations',masters,'masteries')
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6-1-RC
+          name: EldenWorld-M6-1-Final
           path: |
             m5/build/libs/*.jar
-            EldenWorld_Passive_Tree_M6_1.zip
-            EldenWorld_M6_Specializations.md
+            EldenWorld-Passive-Tree-M6.1-Final.zip
           if-no-files-found: error

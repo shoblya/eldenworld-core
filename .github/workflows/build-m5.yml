@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M6.1 Final
+name: Build EldenWorld Core M6.1.1 Final
 on:
   workflow_dispatch:
   push:
@@ -30,7 +30,7 @@ jobs:
           r=Path('m5')
           p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java';s=p.read_text();s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }');p.write_text(s)
           p=r/'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java';s=p.read_text();s=s.replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1);p.write_text(s)
-          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1-final'))
+          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1.1-final'))
           PY
       - name: Add mod-integrated specialization systems
         run: |
@@ -41,17 +41,6 @@ jobs:
           test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 396
           test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
           test $(find m5/src/main/resources/data/eldenworld_core/skill_requirements -name '*.json' | wc -l) -eq 396
-      - name: Build M6.1 Final
-        working-directory: m5
-        run: gradle build --stacktrace
-      - name: Package final datapack
-        run: |
-          rm -rf datapack && mkdir -p datapack/data/eldenworld datapack/data/eldenworld_core
-          cp -r m5/src/main/resources/data/eldenworld/skills datapack/data/eldenworld/
-          cp -r m5/src/main/resources/data/eldenworld/skill_trees datapack/data/eldenworld/
-          cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements datapack/data/eldenworld_core/
-          printf '%s\n' '{"pack":{"pack_format":15,"description":"EldenWorld M6.1 Final - mod-integrated specializations and Mastery tradeoffs"}}' > datapack/pack.mcmeta
-          (cd datapack && zip -qr ../EldenWorld-Passive-Tree-M6.1-Final.zip .)
       - name: Validate final descriptions
         run: |
           python3 - <<'PY'
@@ -67,10 +56,37 @@ jobs:
           assert specs==54 and masters==54,(specs,masters)
           print('validated',len(fs),'skills',specs,'specializations',masters,'masteries')
           PY
+      - name: Package authoritative datapack
+        run: |
+          rm -rf datapack && mkdir -p datapack/data/eldenworld datapack/data/eldenworld_core
+          cp -r m5/src/main/resources/data/eldenworld/skills datapack/data/eldenworld/
+          cp -r m5/src/main/resources/data/eldenworld/skill_trees datapack/data/eldenworld/
+          cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements datapack/data/eldenworld_core/
+          printf '%s\n' '{"pack":{"pack_format":15,"description":"EldenWorld M6.1.1 Final - authoritative passive tree data"}}' > datapack/pack.mcmeta
+          (cd datapack && zip -qr ../EldenWorld-Passive-Tree-M6.1.1-Final.zip .)
+      - name: Prepare code-only Core JAR
+        run: |
+          rm -rf m5/src/main/resources/data/eldenworld/skills
+          rm -rf m5/src/main/resources/data/eldenworld/skill_trees
+          rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
+      - name: Build M6.1.1 Final
+        working-directory: m5
+        run: gradle build --stacktrace
+      - name: Validate split packaging
+        run: |
+          JAR=$(find m5/build/libs -name '*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -1)
+          test -n "$JAR"
+          ! unzip -l "$JAR" | grep -q 'data/eldenworld/skills/'
+          ! unzip -l "$JAR" | grep -q 'data/eldenworld/skill_trees/'
+          ! unzip -l "$JAR" | grep -q 'data/eldenworld_core/skill_requirements/'
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.1-Final.zip | grep 'data/eldenworld/skills/.*json' | wc -l) -eq 396
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.1-Final.zip | grep 'data/eldenworld/skill_trees/.*json' | wc -l) -eq 18
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.1-Final.zip | grep 'data/eldenworld_core/skill_requirements/.*json' | wc -l) -eq 396
+          echo 'split packaging validated: code-only JAR + single authoritative datapack'
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6-1-Final
+          name: EldenWorld-M6-1-1-Final
           path: |
             m5/build/libs/*.jar
-            EldenWorld-Passive-Tree-M6.1-Final.zip
+            EldenWorld-Passive-Tree-M6.1.1-Final.zip
           if-no-files-found: error

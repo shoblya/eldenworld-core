@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.eldenworld.core.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "eldenworld_core.refmap.json",
+  "mixins": [
+    "LearnSkillMessageAccessor",
+    "LearnSkillMessageMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

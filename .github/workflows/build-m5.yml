@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M6.1.1 Final
+name: Build EldenWorld Core M6.1.2 PST Fix
 on:
   workflow_dispatch:
   push:
@@ -30,7 +30,7 @@ jobs:
           r=Path('m5')
           p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java';s=p.read_text();s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }');p.write_text(s)
           p=r/'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java';s=p.read_text();s=s.replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1);p.write_text(s)
-          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1.1-final'))
+          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1.2-pst-fix'))
           PY
       - name: Add mod-integrated specialization systems
         run: |
@@ -41,6 +41,27 @@ jobs:
           test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 396
           test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
           test $(find m5/src/main/resources/data/eldenworld_core/skill_requirements -name '*.json' | wc -l) -eq 396
+      - name: Normalize Passive Skill Tree 0.7.6e schema
+        run: |
+          python3 - <<'PY'
+          import json, glob, pathlib
+          skill_files = glob.glob('m5/src/main/resources/data/eldenworld/skills/*.json')
+          skill_ids = {json.load(open(f, encoding='utf-8'))['id'] for f in skill_files}
+          assert len(skill_ids) == 396
+          for f in glob.glob('m5/src/main/resources/data/eldenworld/skill_trees/*.json'):
+              p = pathlib.Path(f)
+              d = json.load(open(p, encoding='utf-8'))
+              # PassiveSkillTree 0.7.6e deserializes the private Java field named skillIds.
+              # The old generated key "skills" is ignored and leaves the tree empty/broken during sync.
+              if 'skills' in d:
+                  d['skillIds'] = d.pop('skills')
+              assert 'skillIds' in d and isinstance(d['skillIds'], list) and d['skillIds'], f
+              assert 'skills' not in d, f
+              assert all(isinstance(x, str) and x in skill_ids for x in d['skillIds']), f
+              assert len(d['skillIds']) == len(set(d['skillIds'])), f
+              p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print('PST 0.7.6e schema validated: 18 trees, all skillIds resolve to 396 generated skills')
+          PY
       - name: Validate final descriptions
         run: |
           python3 - <<'PY'
@@ -62,14 +83,14 @@ jobs:
           cp -r m5/src/main/resources/data/eldenworld/skills datapack/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld/skill_trees datapack/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements datapack/data/eldenworld_core/
-          printf '%s\n' '{"pack":{"pack_format":15,"description":"EldenWorld M6.1.1 Final - authoritative passive tree data"}}' > datapack/pack.mcmeta
-          (cd datapack && zip -qr ../EldenWorld-Passive-Tree-M6.1.1-Final.zip .)
+          printf '%s\n' '{"pack":{"pack_format":15,"description":"EldenWorld M6.1.2 - Passive Skill Tree 0.7.6e sync fix"}}' > datapack/pack.mcmeta
+          (cd datapack && zip -qr ../EldenWorld-Passive-Tree-M6.1.2-PST-Fix.zip .)
       - name: Prepare code-only Core JAR
         run: |
           rm -rf m5/src/main/resources/data/eldenworld/skills
           rm -rf m5/src/main/resources/data/eldenworld/skill_trees
           rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
-      - name: Build M6.1.1 Final
+      - name: Build M6.1.2 PST Fix
         working-directory: m5
         run: gradle build --stacktrace
       - name: Validate split packaging
@@ -79,14 +100,23 @@ jobs:
           ! unzip -l "$JAR" | grep -q 'data/eldenworld/skills/'
           ! unzip -l "$JAR" | grep -q 'data/eldenworld/skill_trees/'
           ! unzip -l "$JAR" | grep -q 'data/eldenworld_core/skill_requirements/'
-          test $(unzip -l EldenWorld-Passive-Tree-M6.1.1-Final.zip | grep 'data/eldenworld/skills/.*json' | wc -l) -eq 396
-          test $(unzip -l EldenWorld-Passive-Tree-M6.1.1-Final.zip | grep 'data/eldenworld/skill_trees/.*json' | wc -l) -eq 18
-          test $(unzip -l EldenWorld-Passive-Tree-M6.1.1-Final.zip | grep 'data/eldenworld_core/skill_requirements/.*json' | wc -l) -eq 396
-          echo 'split packaging validated: code-only JAR + single authoritative datapack'
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.2-PST-Fix.zip | grep 'data/eldenworld/skills/.*json' | wc -l) -eq 396
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.2-PST-Fix.zip | grep 'data/eldenworld/skill_trees/.*json' | wc -l) -eq 18
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.2-PST-Fix.zip | grep 'data/eldenworld_core/skill_requirements/.*json' | wc -l) -eq 396
+          python3 - <<'PY'
+          import zipfile,json
+          z=zipfile.ZipFile('EldenWorld-Passive-Tree-M6.1.2-PST-Fix.zip')
+          trees=[n for n in z.namelist() if '/skill_trees/' in n and n.endswith('.json')]
+          assert len(trees)==18
+          for n in trees:
+              d=json.loads(z.read(n)); assert d.get('skillIds') and 'skills' not in d, n
+          print('ZIP schema validated for PST 0.7.6e')
+          PY
+          echo 'split packaging validated: code-only JAR + corrected authoritative datapack'
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6-1-1-Final
+          name: EldenWorld-M6-1-2-PST-Fix
           path: |
             m5/build/libs/*.jar
-            EldenWorld-Passive-Tree-M6.1.1-Final.zip
+            EldenWorld-Passive-Tree-M6.1.2-PST-Fix.zip
           if-no-files-found: error

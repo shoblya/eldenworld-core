@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M5
+name: Build EldenWorld Core M6
 on:
   workflow_dispatch:
   push:
@@ -15,22 +15,22 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
-      - name: Reconstruct M3 source
+      - name: Reconstruct source
         run: |
           cat source_parts/m3_*.b64 > m3.b64
           base64 -d m3.b64 > m3.zip
           unzip -q m3.zip -d m5
-      - name: Apply M4 foundation
+      - name: Apply safety foundation and M6 version
         run: |
           python3 - <<'PY'
           from pathlib import Path
           r=Path('m5')
           p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java';s=p.read_text();s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }');p.write_text(s)
           p=r/'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java';s=p.read_text();s=s.replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1);p.write_text(s)
-          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.5.0-m5-final'))
+          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.0-m6'))
           p=r/'build.gradle';p.write_text(p.read_text().replace('archivesName = "EldenWorld-Core-${mod_version}"','archivesName = "EldenWorld-Core"'))
           PY
-      - name: Add M5 systems and trees
+      - name: Add M6 systems and trees
         run: |
           mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
           cp ci/m5_java/SpecializationIds.java ci/m5_java/WeaponMasteryEvents.java ci/m5_java/PetMasteryEvents.java m5/src/main/java/com/eldenworld/core/specialization/
@@ -38,11 +38,65 @@ jobs:
           python3 ci/generate_m5_trees.py m5
           test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 343
           test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
-      - name: Build M5 Final
+      - name: Build M6
         working-directory: m5
         run: gradle build --stacktrace
+      - name: Package M6 datapack
+        run: |
+          rm -rf datapack && mkdir -p datapack/data/eldenworld
+          cp -r m5/src/main/resources/data/eldenworld/skills datapack/data/eldenworld/
+          cp -r m5/src/main/resources/data/eldenworld/skill_trees datapack/data/eldenworld/
+          cat > datapack/pack.mcmeta <<'EOF'
+          {"pack":{"pack_format":15,"description":"EldenWorld M6 Passive Skill Tree — level 150 specializations"}}
+          EOF
+          (cd datapack && zip -qr ../EldenWorld_Passive_Tree_M6.zip .)
+      - name: Generate specialization guide
+        run: |
+          cat > EldenWorld_M6_Specializations.md <<'EOF'
+          # EldenWorld M6 — Specializations & Masteries
+          Progression: specialization root at PST 40; branch tiers at 50/65/80/100/120; Mastery at 150. World Level is the average PST level of every online player, across all dimensions.
+
+          ## Rogue
+          Shadowstep: Nightblade (Shadow/Ender + daggers), Riftwalker (Ender mobility + blades), Mirage (Arcane illusion + dual wield).
+          Ghost: Assassin (Blood/Shadow + daggers), Phantom (Ender evasion + light weapons), Specter (Occult control + scythes).
+          Opportunist: Duelist (Wind + one-handed), Predator (Nature/Blood + execution weapons), Trickster (Arcane utility + ranged tools).
+
+          ## Warrior
+          Juggernaut: Berserker (Fire/Blood + axes), Bloodguard (Blood/Earth + heavy weapons), Colossus (Earth + great weapons).
+          Unyielding: Bulwark (Earth/Holy + shield), Thorned Guard (Nature/Earth retaliation), Spellguard (Holy/Arcane anti-magic).
+          Second Wind: Revenant (Blood/Occult sustain), Vanguard (Holy + MCA/village leadership theme), Ironheart (Fire/Earth + weapon tempering).
+
+          ## Ranger
+          Keen Instinct: Marksman (Wind + bows/crossbows), Hunter (Nature + hunting weapons), Sentinel (Nature/Holy ranged defense).
+          Windrunner: Gale Dancer (Wind spell/arrow rotation), Stormshot (Wind/Lightning + bows), Skirmisher (Wind mobility + ranged weapons).
+          Pathfinder: Beastmaster (Nature + pets), Dragon Rider (Fire/Wind + mounts), Trailblazer (Nature + dimensions).
+
+          ## Mage
+          Archmage: Elementalist (Fire/Ice/Lightning/Wind/Earth), Occultist (Blood/Ender/Twilight/Forbidden), Arcanist (Evocation + Ars Nouveau spellweaving).
+          Manaflow: Channeler (efficient casting), Reservoir (mana capacity/regeneration), Overcaster (spell burst).
+          Arcane Ward: Aegis (elemental warding), Spellbreaker (anti-magic), Runewarden (Ars/Arcane defense).
+
+          ## Builder
+          Master Builder: Architect (construction reach/mobility), Engineer (Arcane/Redstone utility), Fortifier (Earth + defensive building).
+          Enduring Tools: Smith (Fire/Earth forging), Temperer (durability/equipment), Runesmith (Ars/Arcane equipment utility).
+          Prospector: Deep Delver (Earth + underground survival), Gem Hunter (luck/relic materials), Excavator (Geomancy + mining).
+
+          ## Adventurer
+          Wayfarer: Dimension Walker (Ender + dimensions), Pilgrim (Nature/Holy exploration), Cartographer (discovery + Waystones theme).
+          Treasure Hunter: Relic Seeker (Artifacts/Relics + Arcane), Fortune Hunter (loot/luck), Archaeologist (structures + occult lore).
+          Survivor: Last Stand (Holy/Blood survival), Wastelander (Nature adaptation/hostile dimensions), Monster Slayer (boss hunting + weapon versatility).
+
+          ## What Mastery actually gives in this RC
+          Every branch has five progression nodes plus a level-150 Mastery. Mastery grants a stronger branch attribute package. Combat archetypes receive +6% attack damage and +5% Iron's Spells spell power, intentionally allowing magic hybrids outside Mage. Mage Masteries receive +5% spell power plus mana progression. Builder/Adventurer Masteries receive +1 Luck plus their branch progression. Existing Core-coded special mechanics remain active for the legacy mastery IDs implemented by WeaponMasteryEvents/PetMasteryEvents; themed MCA, dimension, Ars and relic interactions listed above are the M6 specialization direction and are not claimed as bespoke Java hooks unless Core implements them.
+
+          ## Performance
+          Mob scaling changes attributes, not AI. Loaded monsters are reconsidered every 10 seconds; fixed UUID modifiers are replaced rather than stacked. HP ratio is preserved when World Level changes.
+          EOF
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-Core-M5-FINAL
-          path: m5/build/libs/*.jar
+          name: EldenWorld-M6-RC
+          path: |
+            m5/build/libs/*.jar
+            EldenWorld_Passive_Tree_M6.zip
+            EldenWorld_M6_Specializations.md
           if-no-files-found: error

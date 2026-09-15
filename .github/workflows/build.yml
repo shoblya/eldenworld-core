@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M3
+name: Build EldenWorld Core M3.1
 
 on:
   workflow_dispatch:
@@ -31,13 +31,44 @@ jobs:
           test -f m3/build.gradle
           test -f m3/src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java
 
-      - name: Build M3
+      - name: Apply M3.1 death lifecycle hotfix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('m3')
+
+          p = root / 'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java'
+          s = p.read_text()
+          old = '''    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }'''
+          new = '''    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) {\n            return false;\n        }\n        try {\n            return RequirementChecker.hasSkill(player, skillId);\n        } catch (NullPointerException ignored) {\n            // Passive Skill Tree invalidates its capability during death/respawn.\n            // Ability checks can still be reached by late Forge events in that window.\n            return false;\n        }\n    }'''
+          if old not in s:
+              raise SystemExit('AbilityUtil hotfix target not found')
+          p.write_text(s.replace(old, new))
+
+          p = root / 'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java'
+          s = p.read_text()
+          old = '''        if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player)) {\n            return;\n        }\n        long now = player.level().getGameTime();'''
+          new = '''        if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player)) {\n            return;\n        }\n        // A PlayerTick can still fire for the old ServerPlayer instance immediately\n        // after death, when Passive Skill Tree has already invalidated its capability.\n        if (!player.isAlive() || player.isRemoved()) {\n            return;\n        }\n        long now = player.level().getGameTime();'''
+          if old not in s:
+              raise SystemExit('PlayerTick hotfix target not found')
+          p.write_text(s.replace(old, new))
+
+          p = root / 'gradle.properties'
+          p.write_text(p.read_text().replace('mod_version=0.3.0-m3', 'mod_version=0.3.1-m3.1'))
+
+          p = root / 'build.gradle'
+          p.write_text(p.read_text().replace('archivesName = "EldenWorld-Core-${mod_version}"', 'archivesName = "EldenWorld-Core"'))
+          PY
+
+      - name: Build M3.1
         working-directory: m3
         run: gradle build --stacktrace
 
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-Core-M3
+          name: EldenWorld-Core-M3.1
           path: m3/build/libs/*.jar
           if-no-files-found: error

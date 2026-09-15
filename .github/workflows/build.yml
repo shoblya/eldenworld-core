@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M4
+name: Build EldenWorld Core M5
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
           from pathlib import Path
           root=Path('core')
           def rep(path,a,b):
-              p=root/path; s=p.read_text();
+              p=root/path; s=p.read_text()
               if a not in s: raise SystemExit(f'target not found: {path}')
               p.write_text(s.replace(a,b))
           rep(Path('gradle.properties'),'mod_version=0.3.0-m3','mod_version=0.4.0-m4')
@@ -43,23 +43,36 @@ jobs:
           p=root/'src/main/java/com/eldenworld/core/abilities/KeystoneIds.java'; s=p.read_text()
           s=s.replace('import net.minecraft.resources.ResourceLocation;','import net.minecraft.resources.ResourceLocation;\n\nimport java.util.Set;')
           marker='''    public static final ResourceLocation SURVIVOR = id("skilltree:enchanter_subclass_2_mastery");\n'''
-          add='''\n    public static final Set<ResourceLocation> ALL = Set.of(\n            SHADOWSTEP, GHOST, OPPORTUNIST,\n            JUGGERNAUT, UNYIELDING, SECOND_WIND,\n            KEEN_INSTINCT, WINDRUNNER, PATHFINDER,\n            ARCHMAGE, MANAFLOW, ARCANE_WARD,\n            MASTER_BUILDER, ENDURING_TOOLS, PROSPECTOR,\n            WAYFARER, TREASURE_HUNTER, SURVIVOR\n    );\n\n    public static boolean isKeystone(ResourceLocation id) { return ALL.contains(id); }\n'''
+          add='''\n    public static final Set<ResourceLocation> ALL = Set.of(\n            SHADOWSTEP, GHOST, OPPORTUNIST, JUGGERNAUT, UNYIELDING, SECOND_WIND,\n            KEEN_INSTINCT, WINDRUNNER, PATHFINDER, ARCHMAGE, MANAFLOW, ARCANE_WARD,\n            MASTER_BUILDER, ENDURING_TOOLS, PROSPECTOR, WAYFARER, TREASURE_HUNTER, SURVIVOR\n    );\n    public static boolean isKeystone(ResourceLocation id) { return ALL.contains(id); }\n'''
           if marker not in s: raise SystemExit('keystone marker missing')
           p.write_text(s.replace(marker,marker+add))
-          (root/'src/main/java/com/eldenworld/core/abilities/KeystoneLimit.java').write_text('''package com.eldenworld.core.abilities;\n\nimport com.eldenworld.core.requirements.RequirementChecker;\nimport daripher.skilltree.capability.skill.IPlayerSkills;\nimport daripher.skilltree.capability.skill.PlayerSkillsProvider;\nimport net.minecraft.server.level.ServerPlayer;\n\npublic final class KeystoneLimit {\n    private KeystoneLimit() {}\n    public static int allowedSlots(int level) { if(level>=80)return 3; if(level>=60)return 2; if(level>=40)return 1; return 0; }\n    public static int nextSlotLevel(int level) { if(level<40)return 40; if(level<60)return 60; if(level<80)return 80; return -1; }\n    public static int learnedCount(ServerPlayer player) {\n        IPlayerSkills skills=PlayerSkillsProvider.get(player);\n        return (int)skills.getPlayerSkills().stream().filter(x->KeystoneIds.isKeystone(x.getId())).count();\n    }\n    public static int pstLevel(ServerPlayer player) { return RequirementChecker.pstLevel(player); }\n    public static boolean canLearnAnother(ServerPlayer player) { int l=pstLevel(player); return learnedCount(player)<allowedSlots(l); }\n}\n''')
+          (root/'src/main/java/com/eldenworld/core/abilities/KeystoneLimit.java').write_text('''package com.eldenworld.core.abilities;\nimport com.eldenworld.core.requirements.RequirementChecker;\nimport daripher.skilltree.capability.skill.IPlayerSkills;\nimport daripher.skilltree.capability.skill.PlayerSkillsProvider;\nimport net.minecraft.server.level.ServerPlayer;\npublic final class KeystoneLimit {\n private KeystoneLimit() {}\n public static int allowedSlots(int l){if(l>=80)return 3;if(l>=60)return 2;if(l>=40)return 1;return 0;}\n public static int nextSlotLevel(int l){if(l<40)return 40;if(l<60)return 60;if(l<80)return 80;return -1;}\n public static int learnedCount(ServerPlayer p){IPlayerSkills s=PlayerSkillsProvider.get(p);return (int)s.getPlayerSkills().stream().filter(x->KeystoneIds.isKeystone(x.getId())).count();}\n public static int pstLevel(ServerPlayer p){return RequirementChecker.pstLevel(p);}\n public static boolean canLearnAnother(ServerPlayer p){int l=pstLevel(p);return learnedCount(p)<allowedSlots(l);}\n}\n''')
           p=root/'src/main/java/com/eldenworld/core/mixin/LearnSkillMessageMixin.java'; s=p.read_text()
           s=s.replace('import com.eldenworld.core.requirements.NodeRequirement;','import com.eldenworld.core.abilities.KeystoneIds;\nimport com.eldenworld.core.abilities.KeystoneLimit;\nimport com.eldenworld.core.requirements.NodeRequirement;')
           needle='''        if (player == null) {\n            return;\n        }\n'''
-          insert='''        if (player == null) {\n            return;\n        }\n\n        if (KeystoneIds.isKeystone(skillId) && !KeystoneLimit.canLearnAnother(player)) {\n            int level=KeystoneLimit.pstLevel(player);\n            int learned=KeystoneLimit.learnedCount(player);\n            int allowed=KeystoneLimit.allowedSlots(level);\n            int next=KeystoneLimit.nextSlotLevel(level);\n            context.setPacketHandled(true);\n            player.sendSystemMessage(Component.literal("Лимит ключевых нод: "+learned+"/"+allowed).withStyle(ChatFormatting.RED));\n            if(next>0) player.sendSystemMessage(Component.literal("Следующий слот откроется на PST уровне "+next+".").withStyle(ChatFormatting.YELLOW));\n            ci.cancel();\n            return;\n        }\n'''
+          insert='''        if (player == null) {\n            return;\n        }\n        if (KeystoneIds.isKeystone(skillId) && !KeystoneLimit.canLearnAnother(player)) {\n            int level=KeystoneLimit.pstLevel(player), learned=KeystoneLimit.learnedCount(player), allowed=KeystoneLimit.allowedSlots(level), next=KeystoneLimit.nextSlotLevel(level);\n            context.setPacketHandled(true);\n            player.sendSystemMessage(Component.literal("Лимит ключевых нод: "+learned+"/"+allowed).withStyle(ChatFormatting.RED));\n            if(next>0) player.sendSystemMessage(Component.literal("Следующий слот откроется на PST уровне "+next+".").withStyle(ChatFormatting.YELLOW));\n            ci.cancel(); return;\n        }\n'''
           if needle not in s: raise SystemExit('mixin insertion missing')
           p.write_text(s.replace(needle,insert))
           PY
-      - name: Build M4
+      - name: Apply M5 specializations and world balance
+        shell: bash
+        run: |
+          mkdir -p core/src/main/java/com/eldenworld/core/specialization core/src/main/java/com/eldenworld/core/balance
+          cp m5_tools/SpecializationIds.java core/src/main/java/com/eldenworld/core/specialization/
+          cp m5_tools/WeaponMasteryEvents.java core/src/main/java/com/eldenworld/core/specialization/
+          cp m5_tools/PetMasteryEvents.java core/src/main/java/com/eldenworld/core/specialization/
+          cp m5_tools/WorldScalingEvents.java core/src/main/java/com/eldenworld/core/balance/
+          python3 m5_tools/generate_trees.py core
+          sed -i 's/mod_version=0.4.0-m4/mod_version=0.5.0-m5/' core/gradle.properties
+          sed -i 's/EldenWorld Core M4 loaded: server-only PST progression + 18 keystones + level-based keystone limits./EldenWorld Core M5 loaded: 18 subclass trees + masteries + pets + weapon styles + adaptive world scaling./' core/src/main/java/com/eldenworld/core/EldenWorldCore.java
+          test $(find core/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
+          test $(find core/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 343
+      - name: Build M5
         working-directory: core
         run: gradle build --stacktrace
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-Core-M4
+          name: EldenWorld-Core-M5
           path: core/build/libs/*.jar
           if-no-files-found: error

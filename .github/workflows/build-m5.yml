@@ -1,0 +1,48 @@
+name: Build EldenWorld Core M5
+on:
+  workflow_dispatch:
+  push:
+    branches: [ m5-build ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+      - name: Reconstruct M3 source
+        run: |
+          cat source_parts/m3_*.b64 > m3.b64
+          base64 -d m3.b64 > m3.zip
+          unzip -q m3.zip -d m5
+      - name: Apply M4 foundation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          r=Path('m5')
+          p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java';s=p.read_text();s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }');p.write_text(s)
+          p=r/'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java';s=p.read_text();s=s.replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1);p.write_text(s)
+          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.5.0-m5'))
+          p=r/'build.gradle';p.write_text(p.read_text().replace('archivesName = "EldenWorld-Core-${mod_version}"','archivesName = "EldenWorld-Core"'))
+          PY
+      - name: Add M5 systems and trees
+        run: |
+          mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
+          cp ci/m5_java/SpecializationIds.java ci/m5_java/WeaponMasteryEvents.java ci/m5_java/PetMasteryEvents.java m5/src/main/java/com/eldenworld/core/specialization/
+          cp ci/m5_java/WorldScalingEvents.java m5/src/main/java/com/eldenworld/core/balance/
+          python3 ci/generate_m5_trees.py m5
+          test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 343
+          test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
+      - name: Build M5
+        working-directory: m5
+        run: gradle build --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EldenWorld-Core-M5
+          path: m5/build/libs/*.jar
+          if-no-files-found: error

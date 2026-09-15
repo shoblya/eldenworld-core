@@ -1,6 +1,16 @@
-# EldenWorld Core M6.1.5 — shared tree restoration
+# EldenWorld Core M6.1.6 — shared tree restoration
 
-The `m5-build` branch builds the current M6.1.5 pair. The older M3 notes below are historical.
+The `m5-build` branch builds the current M6.1.6 pair. The older M3 notes below are historical.
+
+## M6.1.6 limits and hostile scaling
+
+Keystone/subclass slots: 0 before level 40, 1 at 40, 2 at 60, 3 at 80. The server enforces this before looking up optional datapack requirements; excess previously learned nodes are retained, but no more can be learned while at or over the limit.
+
+Scaling uses the mean PST level of online non-spectator players, capped at 150. It starts above level 10. At 150, health/damage/armor bonuses are: ordinary +150%/+75%/+10; dangerous +110%/+60%/+8; elite +85%/+45%/+7; boss +60%/+35%/+5. Tier detection remains based on entity IDs and base health, so unusual modded bosses may need explicit integration.
+
+Hostiles are recognized through Enemy, MONSTER category, player-targeting or observed attacks against players; modpacks can add entity types to `eldenworld_core:hostile_mobs`. Players, owned creatures and `eldenworld_core:scaling_excluded` types are excluded. Previously unknown aggressive creatures are picked up when they target or hurt a player. Living-source projectiles/magic scale too; ownerless mod damage cannot be attributed automatically.
+
+Fixed modifier UUIDs prevent stacking, existing health percentage is preserved, old attack modifiers are removed on upgrade, and the world cache resets on server stop. Every 10 seconds loaded living entities are checked for level/ownership/hostility changes.
 
 ## Current progression
 
@@ -12,9 +22,9 @@ The `m5-build` branch builds the current M6.1.5 pair. The older M3 notes below a
 
 ## Installation
 
-Download both M6.1.5 artifacts from the latest successful `build-m5.yml` run.
+Download both M6.1.6 artifacts from the latest successful `build-m5.yml` run.
 Extract the Core artifact and put the runtime JAR in `mods` on the client and server; the client needs Core for the selector, icons and translations.
-Extract the datapack artifact once and put the inner `EldenWorld-Passive-Tree-M6.1.5.zip` into the world's `datapacks` directory.
+Extract the datapack artifact once and put the inner `EldenWorld-Passive-Tree-M6.1.6.zip` into the world's `datapacks` directory.
 Replace older EldenWorld Core JARs and tree datapacks, including v7.x and M6.x, rather than stacking them. Restart the client and server.
 The complete datapack already includes the original large tree; a separate v7 pack is unnecessary.
 

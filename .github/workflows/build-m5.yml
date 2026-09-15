@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M6.1.5 Tree Restore
+name: Build EldenWorld Core M6.1.6 Tree Restore
 on:
   workflow_dispatch:
   push:
@@ -15,6 +15,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
+
+      - name: Verify subclass limits and scaling curve
+        run: python3 ci/test_balance_policy.py
 
       - name: Reconstruct source
         run: |
@@ -38,14 +41,16 @@ jobs:
           s=p.read_text().replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1)
           p.write_text(s)
           p=r/'gradle.properties'
-          p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1.5-tree-restore'))
+          p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.1-m6.1.6-tree-restore'))
           PY
 
       - name: Add specialization systems
         run: |
           mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
           cp /tmp/m62/FinalSpecializationEventsV2.java /tmp/m62/FinalSpecializationSpellEventsV2.java m5/src/main/java/com/eldenworld/core/specialization/
-          cp /tmp/m62/WorldScalingEvents.java m5/src/main/java/com/eldenworld/core/balance/
+          cp ci/m616/WorldScalingEvents.java m5/src/main/java/com/eldenworld/core/balance/
+          cp ci/m616/KeystoneLimit.java m5/src/main/java/com/eldenworld/core/abilities/
+          cp ci/m616/LearnSkillMessageMixin.java m5/src/main/java/com/eldenworld/core/mixin/
           python3 /tmp/m62/generate_m61_trees.py m5 /tmp/m62/m6_specializations.json
           test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 396
           test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
@@ -102,19 +107,19 @@ jobs:
           cp -r m5/src/main/resources/data/eldenworld/skill_trees /tmp/eldenworld_tree_pack/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements /tmp/eldenworld_tree_pack/data/eldenworld_core/
           cat > /tmp/eldenworld_tree_pack/pack.mcmeta <<'EOF'
-          {"pack":{"pack_format":15,"description":"EldenWorld M6.1.5 Passive Skill Trees - authoritative datapack"}}
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.1.6 Passive Skill Trees - authoritative datapack"}}
           EOF
           cd /tmp/eldenworld_tree_pack
-          zip -qr "$GITHUB_WORKSPACE/EldenWorld-Passive-Tree-M6.1.5.zip" .
+          zip -qr "$GITHUB_WORKSPACE/EldenWorld-Passive-Tree-M6.1.6.zip" .
           cd "$GITHUB_WORKSPACE"
-          test $(unzip -l EldenWorld-Passive-Tree-M6.1.5.zip | grep 'data/eldenworld/skills/.*json' | wc -l) -eq 396
-          test $(unzip -l EldenWorld-Passive-Tree-M6.1.5.zip | grep 'data/eldenworld/skill_trees/.*json' | wc -l) -eq 18
-          test $(unzip -l EldenWorld-Passive-Tree-M6.1.5.zip | grep 'data/eldenworld_core/skill_requirements/.*json' | wc -l) -eq 396
-          unzip -p EldenWorld-Passive-Tree-M6.1.5.zip data/eldenworld/skill_trees/shadowstep.json | grep -q '"skillIds"'
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.6.zip | grep 'data/eldenworld/skills/.*json' | wc -l) -eq 396
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.6.zip | grep 'data/eldenworld/skill_trees/.*json' | wc -l) -eq 18
+          test $(unzip -l EldenWorld-Passive-Tree-M6.1.6.zip | grep 'data/eldenworld_core/skill_requirements/.*json' | wc -l) -eq 396
+          unzip -p EldenWorld-Passive-Tree-M6.1.6.zip data/eldenworld/skill_trees/shadowstep.json | grep -q '"skillIds"'
           echo 'Datapack validated: 396 skills + 18 trees + 396 requirements + skillIds schema'
 
       - name: Restore shared base tree and validate progression
-        run: python3 ci/restore_base_tree.py EldenWorld-Passive-Tree-M6.1.5.zip m5/src/main/resources
+        run: python3 ci/restore_base_tree.py EldenWorld-Passive-Tree-M6.1.6.zip m5/src/main/resources
 
       - name: Prepare code-only Core JAR
         run: |
@@ -122,7 +127,7 @@ jobs:
           rm -rf m5/src/main/resources/data/eldenworld/skill_trees
           rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
 
-      - name: Build M6.1.5 Tree Restore
+      - name: Build M6.1.6 Tree Restore
         working-directory: m5
         run: gradle build --stacktrace
 
@@ -135,16 +140,16 @@ jobs:
           unzip -l "$JAR" | grep -q 'assets/eldenworld/lang/ru_ru.json'
           unzip -l "$JAR" | grep -q 'assets/eldenworld/lang/en_us.json'
           test $(unzip -l "$JAR" | grep 'assets/eldenworld/textures/icons/skill_tree/.*png' | wc -l) -eq 18
-          echo 'M6.1.5 Core validated: gated selector + translations + 18 tree icons'
+          echo 'M6.1.6 Core validated: gated selector + translations + 18 tree icons'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6-1-5-Tree-Restore-Core
+          name: EldenWorld-M6-1-6-Tree-Restore-Core
           path: m5/build/libs/*.jar
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6-1-5-Passive-Tree-Datapack
-          path: EldenWorld-Passive-Tree-M6.1.5.zip
+          name: EldenWorld-M6-1-6-Passive-Tree-Datapack
+          path: EldenWorld-Passive-Tree-M6.1.6.zip
           if-no-files-found: error

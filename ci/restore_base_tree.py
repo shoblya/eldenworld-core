@@ -30,7 +30,7 @@ for name, data in list(content.items()):
 content['data/skilltree/skill_trees/main_tree.json'] = json.dumps(
     {'id': 'skilltree:main_tree', 'skillIds': [], 'skillLimitations': {}}).encode()
 content['pack.mcmeta'] = json.dumps({'pack': {'pack_format': 15,
-    'description': 'EldenWorld M6.1.5: shared 589-node tree + 18 gated subclass trees'}}).encode()
+    'description': 'EldenWorld M6.1.6: shared 589-node tree + 18 gated subclass trees'}}).encode()
 
 skills = {json.loads(v)['id']: json.loads(v) for n, v in content.items()
           if '/skills/' in n and n.endswith('.json')}

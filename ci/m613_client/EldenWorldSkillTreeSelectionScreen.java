@@ -30,11 +30,12 @@ import java.util.stream.Collectors;
 
 /**
  * EldenWorld filtered Passive Skill Tree picker.
- * Base/non-EldenWorld trees are always visible. Only EldenWorld subclass trees are gated.
+ * One shared EldenWorld base tree; subclass trees appear only after their keystone is learned.
  */
 public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     private static final int BUTTON_SIZE = 19;
     private static final int BUTTON_SPACING = 5;
+    private static final ResourceLocation BASE_TREE = new ResourceLocation("skilltree", "soldier");
     private static final String ELDENWORLD_NAMESPACE = "eldenworld";
     private static final Map<ResourceLocation, ResourceLocation> TREE_UNLOCKS = createUnlockMap();
 
@@ -102,8 +103,8 @@ public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     }
 
     private static String sortKey(ResourceLocation id) {
-        // Keep all normal/base trees first; unlocked EldenWorld subclass trees follow them.
-        if (!ELDENWORLD_NAMESPACE.equals(id.getNamespace())) return "0-" + id;
+        // The original 589-node tree stays first.
+        if (BASE_TREE.equals(id)) return "0-" + id;
         int index = 0;
         for (ResourceLocation treeId : TREE_UNLOCKS.keySet()) {
             if (treeId.equals(id)) return String.format("1-%02d", index);
@@ -113,8 +114,8 @@ public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     }
 
     private static boolean isVisible(ResourceLocation treeId, Set<ResourceLocation> learned) {
-        // Critical rule: never hide Passive Skill Tree's own/base trees or trees from other addons.
-        if (!ELDENWORLD_NAMESPACE.equals(treeId.getNamespace())) return true;
+        // Only our shared base tree is initially visible.
+        if (BASE_TREE.equals(treeId)) return true;
 
         // EldenWorld subclass trees are hidden until their corresponding base-tree unlock node is learned.
         ResourceLocation unlock = TREE_UNLOCKS.get(treeId);

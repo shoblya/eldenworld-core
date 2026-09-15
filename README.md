@@ -1,3 +1,30 @@
+# EldenWorld Core M6.1.5 — shared tree restoration
+
+The `m5-build` branch builds the current M6.1.5 pair. The older M3 notes below are historical.
+
+## Current progression
+
+- A new player sees one shared EldenWorld tree: 589 original nodes, one central start, six directions.
+- Learning one of its 18 keystones reveals the corresponding subclass tree. Other subclass trees remain hidden.
+- The base is preserved from `EldenWorld_Passive_Tree_v7_3_M3_KEYSTONES.zip`, including its `skilltree:soldier` ID and all node IDs, bonuses, positions and links.
+- The complete datapack contains that base plus 18 subclass trees (396 additional nodes and their requirements).
+- Preceding-node requirements now use the `eldenworld:` namespace so progression resolves the intended nodes.
+
+## Installation
+
+Download both M6.1.5 artifacts from the latest successful `build-m5.yml` run.
+Extract the Core artifact and put the runtime JAR in `mods` on the client and server; the client needs Core for the selector, icons and translations.
+Extract the datapack artifact once and put the inner `EldenWorld-Passive-Tree-M6.1.5.zip` into the world's `datapacks` directory.
+Replace older EldenWorld Core JARs and tree datapacks, including v7.x and M6.x, rather than stacking them. Restart the client and server.
+The complete datapack already includes the original large tree; a separate v7 pack is unnecessary.
+
+## Verification
+
+CI compiles Core and checks the packaged assets. `ci/restore_base_tree.py` checks that all 589 base nodes are preserved byte for byte and reachable from the sole start, that all 18 subclass unlocks exist in the base, and that all 396 requirements resolve to existing nodes without duplicate skill definitions.
+Minecraft runtime testing is still required; compilation does not verify the in-game layout.
+
+---
+
 # EldenWorld Core M3
 
 Server-only Forge 1.20.1 companion mod for the EldenWorld Passive Skill Tree.
@@ -7,7 +34,7 @@ Server-only Forge 1.20.1 companion mod for the EldenWorld Passive Skill Tree.
 - Passive Skill Tree 0.7.6e+
 - Iron's Spells 'n Spellbooks 1.20.1-3.16.3+
 
-The Core jar is intended to exist only on the dedicated server. `displayTest="IGNORE_SERVER_VERSION"` remains enabled; clients keep their normal modpack but do not need the EldenWorld Core jar.
+Historical M3 only: the Core jar was intended to exist only on the dedicated server. `displayTest="IGNORE_SERVER_VERSION"` remains enabled; clients keep their normal modpack but do not need the EldenWorld Core jar.
 
 ## 18 keystone passives
 

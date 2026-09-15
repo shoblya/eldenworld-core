@@ -28,14 +28,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** EldenWorld filtered Passive Skill Tree picker. */
+/**
+ * EldenWorld filtered Passive Skill Tree picker.
+ * Base/non-EldenWorld trees are always visible. Only EldenWorld subclass trees are gated.
+ */
 public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     private static final int BUTTON_SIZE = 19;
     private static final int BUTTON_SPACING = 5;
-    private static final ResourceLocation MAIN_TREE = ResourceLocation.parse("skilltree:soldier");
+    private static final String ELDENWORLD_NAMESPACE = "eldenworld";
     private static final Map<ResourceLocation, ResourceLocation> TREE_UNLOCKS = createUnlockMap();
 
-    private EldenWorldSkillTreeSelectionScreen() { super(Component.empty()); }
+    private EldenWorldSkillTreeSelectionScreen() {
+        super(Component.empty());
+    }
 
     private static Map<ResourceLocation, ResourceLocation> createUnlockMap() {
         Map<ResourceLocation, ResourceLocation> map = new LinkedHashMap<>();
@@ -61,7 +66,7 @@ public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     }
 
     private static void unlock(Map<ResourceLocation, ResourceLocation> map, String treePath, String unlockSkill) {
-        map.put(new ResourceLocation("eldenworld", treePath), ResourceLocation.parse(unlockSkill));
+        map.put(new ResourceLocation(ELDENWORLD_NAMESPACE, treePath), ResourceLocation.parse(unlockSkill));
     }
 
     @Override
@@ -97,7 +102,8 @@ public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     }
 
     private static String sortKey(ResourceLocation id) {
-        if (MAIN_TREE.equals(id)) return "0";
+        // Keep all normal/base trees first; unlocked EldenWorld subclass trees follow them.
+        if (!ELDENWORLD_NAMESPACE.equals(id.getNamespace())) return "0-" + id;
         int index = 0;
         for (ResourceLocation treeId : TREE_UNLOCKS.keySet()) {
             if (treeId.equals(id)) return String.format("1-%02d", index);
@@ -107,7 +113,10 @@ public final class EldenWorldSkillTreeSelectionScreen extends Screen {
     }
 
     private static boolean isVisible(ResourceLocation treeId, Set<ResourceLocation> learned) {
-        if (MAIN_TREE.equals(treeId)) return true;
+        // Critical rule: never hide Passive Skill Tree's own/base trees or trees from other addons.
+        if (!ELDENWORLD_NAMESPACE.equals(treeId.getNamespace())) return true;
+
+        // EldenWorld subclass trees are hidden until their corresponding base-tree unlock node is learned.
         ResourceLocation unlock = TREE_UNLOCKS.get(treeId);
         return unlock != null && learned.contains(unlock);
     }

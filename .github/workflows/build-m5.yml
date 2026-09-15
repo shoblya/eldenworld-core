@@ -110,7 +110,7 @@ jobs:
           test $(unzip -l EldenWorld-Passive-Tree-M6.1.4.zip | grep 'data/eldenworld/skills/.*json' | wc -l) -eq 396
           test $(unzip -l EldenWorld-Passive-Tree-M6.1.4.zip | grep 'data/eldenworld/skill_trees/.*json' | wc -l) -eq 18
           test $(unzip -l EldenWorld-Passive-Tree-M6.1.4.zip | grep 'data/eldenworld_core/skill_requirements/.*json' | wc -l) -eq 396
-          unzip -p EldenWorld-Passive-Tree-M6.1.4.zip data/eldenworld/skill_trees/rogue_shadowstep.json | grep -q '"skillIds"'
+          unzip -p EldenWorld-Passive-Tree-M6.1.4.zip data/eldenworld/skill_trees/shadowstep.json | grep -q '"skillIds"'
           echo 'Datapack validated: 396 skills + 18 trees + 396 requirements + skillIds schema'
 
       - name: Prepare code-only Core JAR

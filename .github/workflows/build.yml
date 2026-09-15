@@ -1,9 +1,9 @@
-name: Build EldenWorld Core
+name: Build EldenWorld Core M3
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -22,11 +22,22 @@ jobs:
         with:
           gradle-version: '8.8'
 
-      - name: Build
+      - name: Reconstruct M3 source archive
+        shell: bash
+        run: |
+          cat source_parts/m3_*.b64 > EldenWorld_Core_M3_SOURCE.b64
+          base64 -d EldenWorld_Core_M3_SOURCE.b64 > EldenWorld_Core_M3_SOURCE.zip
+          unzip -q EldenWorld_Core_M3_SOURCE.zip -d m3
+          test -f m3/build.gradle
+          test -f m3/src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java
+
+      - name: Build M3
+        working-directory: m3
         run: gradle build --stacktrace
 
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
           name: EldenWorld-Core-M3
-          path: build/libs/*.jar
+          path: m3/build/libs/*.jar
+          if-no-files-found: error

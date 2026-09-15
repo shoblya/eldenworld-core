@@ -27,7 +27,7 @@ jobs:
           r=Path('m5')
           p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java';s=p.read_text();s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }');p.write_text(s)
           p=r/'src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java';s=p.read_text();s=s.replace('        long now = player.level().getGameTime();','        if (!player.isAlive() || player.isRemoved()) return;\n        long now = player.level().getGameTime();',1);p.write_text(s)
-          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.5.0-m5'))
+          p=r/'gradle.properties';p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.5.0-m5-final'))
           p=r/'build.gradle';p.write_text(p.read_text().replace('archivesName = "EldenWorld-Core-${mod_version}"','archivesName = "EldenWorld-Core"'))
           PY
       - name: Add M5 systems and trees
@@ -38,11 +38,11 @@ jobs:
           python3 ci/generate_m5_trees.py m5
           test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 343
           test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
-      - name: Build M5
+      - name: Build M5 Final
         working-directory: m5
         run: gradle build --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-Core-M5
+          name: EldenWorld-Core-M5-FINAL
           path: m5/build/libs/*.jar
           if-no-files-found: error

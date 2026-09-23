@@ -1,4 +1,4 @@
-name: Build EldenWorld Core M6.2 RC1
+name: Build EldenWorld Core M6.2
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
         with:
           gradle-version: '8.8'
 
-      - name: Reconstruct M6.1.6 source base
+      - name: Reconstruct M6.1.7 source base
         run: |
           cat source_parts/m3_*.b64 > m3.b64
           base64 -d m3.b64 > m3.zip
@@ -37,10 +37,10 @@ jobs:
           s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }')
           p.write_text(s)
           p=r/'gradle.properties'
-          p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.2-m6.2-rc1'))
+          p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.2-m6.2'))
           PY
 
-      - name: Restore M6.1.7 systems and apply M6.2 RC1 classes
+      - name: Restore M6.1.7 systems and apply M6.2 classes
         run: |
           mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
           cp /tmp/m62/FinalSpecializationEventsV2.java /tmp/m62/FinalSpecializationSpellEventsV2.java m5/src/main/java/com/eldenworld/core/specialization/
@@ -67,7 +67,7 @@ jobs:
           rm -rf m5/src/main/resources/data/eldenworld/skill_trees
           rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
 
-      - name: Build M6.2 RC1
+      - name: Build M6.2
         working-directory: m5
         run: gradle build --stacktrace
 
@@ -80,10 +80,10 @@ jobs:
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/balance/WorldScalingEvents.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationEventsV2.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationSpellEventsV2.class'
-          cp "$JAR" "$GITHUB_WORKSPACE/EldenWorld-Core-M6.2-RC1.jar"
+          cp "$JAR" "$GITHUB_WORKSPACE/EldenWorld-Core-M6.2.jar"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-Core-M6-2-RC1
-          path: EldenWorld-Core-M6.2-RC1.jar
+          name: EldenWorld-Core-M6-2
+          path: EldenWorld-Core-M6.2.jar
           if-no-files-found: error

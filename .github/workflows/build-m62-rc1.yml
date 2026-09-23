@@ -1,0 +1,89 @@
+name: Build EldenWorld Core M6.2 RC1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ m6.2-rc1-build ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      - name: Reconstruct M6.1.6 source base
+        run: |
+          cat source_parts/m3_*.b64 > m3.b64
+          base64 -d m3.b64 > m3.zip
+          unzip -q m3.zip -d m5
+          cat ci/m62_src_*.b64 > /tmp/m62.b64
+          base64 -d /tmp/m62.b64 > /tmp/m62.tar.gz
+          mkdir -p /tmp/m62 && tar -xzf /tmp/m62.tar.gz -C /tmp/m62
+
+      - name: Apply safety foundation and M6.2 version
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          r=Path('m5')
+          p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java'
+          s=p.read_text()
+          s=s.replace('    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }','    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }')
+          p.write_text(s)
+          p=r/'gradle.properties'
+          p.write_text(p.read_text().replace('mod_version=0.3.0-m3','mod_version=0.6.2-m6.2-rc1'))
+          PY
+
+      - name: Restore M6.1.7 systems and apply M6.2 RC1 classes
+        run: |
+          mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
+          cp /tmp/m62/FinalSpecializationEventsV2.java /tmp/m62/FinalSpecializationSpellEventsV2.java m5/src/main/java/com/eldenworld/core/specialization/
+          cp ci/m616/KeystoneLimit.java m5/src/main/java/com/eldenworld/core/abilities/
+          cp ci/m616/LearnSkillMessageMixin.java m5/src/main/java/com/eldenworld/core/mixin/
+          base64 -d m62_tools/KeystoneAbilityEvents.java.gz.b64 | gzip -dc > m5/src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java
+          base64 -d m62_tools/IronsKeystoneEvents.java.gz.b64 | gzip -dc > m5/src/main/java/com/eldenworld/core/abilities/IronsKeystoneEvents.java
+          base64 -d m62_tools/WorldScalingEvents.java.gz.b64 | gzip -dc > m5/src/main/java/com/eldenworld/core/balance/WorldScalingEvents.java
+          python3 /tmp/m62/generate_m61_trees.py m5 /tmp/m62/m6_specializations.json
+          test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 396
+          test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
+          test $(find m5/src/main/resources/data/eldenworld_core/skill_requirements -name '*.json' | wc -l) -eq 396
+
+      - name: Add selector assets and translations
+        run: |
+          mkdir -p m5/src/main/java/com/eldenworld/core/client
+          cp ci/m613_client/EldenWorldSkillTreeSelectionScreen.java m5/src/main/java/com/eldenworld/core/client/
+          base64 -d ci/m613_client/ui_assets.tar.gz.b64 > /tmp/m613_ui_assets.tar.gz
+          tar -xzf /tmp/m613_ui_assets.tar.gz -C m5/src/main/resources
+
+      - name: Prepare code-only Core JAR
+        run: |
+          rm -rf m5/src/main/resources/data/eldenworld/skills
+          rm -rf m5/src/main/resources/data/eldenworld/skill_trees
+          rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
+
+      - name: Build M6.2 RC1
+        working-directory: m5
+        run: gradle build --stacktrace
+
+      - name: Validate Core JAR
+        run: |
+          JAR=$(find m5/build/libs -name '*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -1)
+          test -n "$JAR"
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/abilities/KeystoneAbilityEvents.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/abilities/IronsKeystoneEvents.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/balance/WorldScalingEvents.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationEventsV2.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationSpellEventsV2.class'
+          cp "$JAR" "$GITHUB_WORKSPACE/EldenWorld-Core-M6.2-RC1.jar"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EldenWorld-Core-M6-2-RC1
+          path: EldenWorld-Core-M6.2-RC1.jar
+          if-no-files-found: error

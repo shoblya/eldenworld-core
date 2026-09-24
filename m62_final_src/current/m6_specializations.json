@@ -1,0 +1,699 @@
+[
+  {
+    "tree": "shadowstep",
+    "branch": "Nightblade",
+    "profile": "light_weapon",
+    "specialization": "Лёгкое оружие Simply Swords (light_weapons) при попадании даёт Hastened на 2 сек.; перезарядка 4 сек.",
+    "mastery": "Hastened длится 4 сек., а попадание также накладывает Rend I на цель на 3 сек. Цена: постоянно -10% брони.",
+    "downside": [
+      [
+        "minecraft:generic.armor",
+        -0.1,
+        1,
+        "-10% брони"
+      ]
+    ]
+  },
+  {
+    "tree": "shadowstep",
+    "branch": "Riftwalker",
+    "profile": "evasion",
+    "specialization": "Сильный входящий удар (4+ урона) автоматически телепортирует на 3 блока назад. Перезарядка 8 сек.",
+    "mastery": "Телепорт 5 блоков, перезарядка 6 сек. и True Invisibility на 2 сек. Цена: постоянно -10% максимального здоровья.",
+    "downside": [
+      [
+        "minecraft:generic.max_health",
+        -0.1,
+        1,
+        "-10% максимального здоровья"
+      ]
+    ]
+  },
+  {
+    "tree": "shadowstep",
+    "branch": "Mirage",
+    "profile": "evasion",
+    "specialization": "Раз в 12 сек. при получении удара создаётся настоящий Summon Decoy из Ars Nouveau на 6 сек., отвлекающий ближайших мобов.",
+    "mastery": "Перезарядка 9 сек.; создаются две Ars-приманки по разные стороны игрока. Цена: постоянно -12% урона атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.12,
+        1,
+        "-12% урона атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "ghost",
+    "branch": "Assassin",
+    "profile": "light_weapon",
+    "specialization": "Удар Sai/Rapier или другим лёгким клинком в спину накладывает Heartstop I на 3 сек.",
+    "mastery": "Heartstop длится 5 сек., а цель дополнительно получает Rend I. Цена: постоянно -12% максимального здоровья.",
+    "downside": [
+      [
+        "minecraft:generic.max_health",
+        -0.12,
+        1,
+        "-12% максимального здоровья"
+      ]
+    ]
+  },
+  {
+    "tree": "ghost",
+    "branch": "Phantom",
+    "profile": "evasion",
+    "specialization": "После получения удара раз в 8 сек. получает Evasion I из Iron’s Spells на 3 сек.",
+    "mastery": "Evasion длится 5 сек. и даёт True Invisibility на 2 сек. Цена: постоянно -15% брони.",
+    "downside": [
+      [
+        "minecraft:generic.armor",
+        -0.15,
+        1,
+        "-15% брони"
+      ]
+    ]
+  },
+  {
+    "tree": "ghost",
+    "branch": "Specter",
+    "profile": "light_weapon",
+    "specialization": "Удары косой Simply Swords накладывают Soul Burn I на 4 сек.",
+    "mastery": "Soul Burn длится 6 сек. и дополнительно накладывает Blight I на 3 сек. Цена: постоянно -20% получаемого лечения.",
+    "downside": [
+      [
+        "attributeslib:healing_received",
+        -0.2,
+        1,
+        "-20% получаемого лечения"
+      ]
+    ]
+  },
+  {
+    "tree": "opportunist",
+    "branch": "Duelist",
+    "profile": "duelist",
+    "specialization": "С пустой второй рукой Rapier/Katana/Cutlass после попадания получает Hastened I на 2 сек.",
+    "mastery": "После попадания также получает Evasion I на 2 сек. Цена: постоянно -12% брони.",
+    "downside": [
+      [
+        "minecraft:generic.armor",
+        -0.12,
+        1,
+        "-12% брони"
+      ]
+    ]
+  },
+  {
+    "tree": "opportunist",
+    "branch": "Predator",
+    "profile": "offense",
+    "specialization": "По цели ниже 50% здоровья попадание накладывает Rend I на 3 сек.",
+    "mastery": "Ниже 20% здоровья цели Rend усиливается и накладывается Heartstop I. Цена: по целям выше 70% здоровья наносится на 12% меньше урона.",
+    "downside": "event"
+  },
+  {
+    "tree": "opportunist",
+    "branch": "Trickster",
+    "profile": "evasion",
+    "specialization": "Попадание раз в 6 сек. накладывает Ars Nouveau Snared I на 2 сек.",
+    "mastery": "Snared длится 4 сек. и одновременно накладывается Hex I на 3 сек. Цена: постоянно -10% прямого урона.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.1,
+        1,
+        "-10% урона атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "juggernaut",
+    "branch": "Berserker",
+    "profile": "warrior_offense",
+    "specialization": "Ниже 40% здоровья получает Vigor I и +15% ближнего урона.",
+    "mastery": "Vigor II и +28% ближнего урона. Цена: постоянно -20% получаемого лечения.",
+    "downside": [
+      [
+        "attributeslib:healing_received",
+        -0.2,
+        1,
+        "-20% получаемого лечения"
+      ]
+    ]
+  },
+  {
+    "tree": "juggernaut",
+    "branch": "Bloodguard",
+    "profile": "tank",
+    "specialization": "Получение ближнего урона раз в 8 сек. даёт Fortify I на 4 сек.",
+    "mastery": "Fortify II длится 5 сек. Цена: постоянно -10% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.1,
+        1,
+        "-10% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "juggernaut",
+    "branch": "Colossus",
+    "profile": "heavy_weapon",
+    "specialization": "Тяжёлые Simply Swords (heavy_weapons: Claymore/Greataxe/Greathammer/Halberd) наносят +18% урона и накладывают Sundering I на 3 сек.",
+    "mastery": "Бонус +30%, Sundering II на 4 сек. Цена: постоянно -18% скорости атаки и -8% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.attack_speed",
+        -0.18,
+        1,
+        "-18% скорости атаки"
+      ],
+      [
+        "minecraft:generic.movement_speed",
+        -0.08,
+        1,
+        "-8% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "unyielding",
+    "branch": "Bulwark",
+    "profile": "tank",
+    "specialization": "Со щитом входящий урон снижен на 12%; после блокирования получает Fortify I на 2 сек.",
+    "mastery": "Снижение 22%, Fortify II. Цена: постоянно -15% урона атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.15,
+        1,
+        "-15% урона атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "unyielding",
+    "branch": "Thorned Guard",
+    "profile": "tank",
+    "specialization": "При получении ближнего удара атакующий получает Bleeding I на 3 сек.",
+    "mastery": "Bleeding II на 4 сек. и Sundering I. Цена: постоянно -12% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.12,
+        1,
+        "-12% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "unyielding",
+    "branch": "Spellguard",
+    "profile": "spellguard",
+    "specialization": "Магический урон снижен на 18%; после магического попадания получает Iron’s Fortify I на 3 сек.",
+    "mastery": "Магический урон снижен на 30%, Fortify II. Цена: постоянно -15% брони против обычных атак.",
+    "downside": [
+      [
+        "minecraft:generic.armor",
+        -0.15,
+        1,
+        "-15% брони"
+      ]
+    ]
+  },
+  {
+    "tree": "second_wind",
+    "branch": "Revenant",
+    "profile": "survival",
+    "specialization": "Смертельный удар раз в 120 сек. оставляет 1 HP и даёт Regeneration II на 5 сек.",
+    "mastery": "Перезарядка 90 сек.; дополнительно получает Vigor I. Цена после спасения: Weakness II на 12 сек. и Grievous I на 20 сек.",
+    "downside": "event"
+  },
+  {
+    "tree": "second_wind",
+    "branch": "Vanguard",
+    "profile": "tank",
+    "specialization": "Рядом с дружественным MCA-жителем получает Resistance I; проверяется именно сущность MCA, а не любой villager.",
+    "mastery": "Рядом с MCA-союзником получает также Vigor I; союзник получает Fortify I. Цена: постоянно -8% личного урона.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.08,
+        1,
+        "-8% личного урона"
+      ]
+    ]
+  },
+  {
+    "tree": "second_wind",
+    "branch": "Ironheart",
+    "profile": "warrior_offense",
+    "specialization": "При оружии с уровнем Lukas’ Weapon Leveling выше базового попадание даёт Fortify I на 2 сек.",
+    "mastery": "Fortify II и Rend I цели. Цена: постоянно -10% скорости атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_speed",
+        -0.1,
+        1,
+        "-10% скорости атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "keen_instinct",
+    "branch": "Marksman",
+    "profile": "ranger",
+    "specialization": "Стрелы с расстояния 12+ блоков накладывают Guided I на 3 сек. и наносят +12% урона.",
+    "mastery": "С 18+ блоков бонус +25% и Rend I на 3 сек. Цена: в ближней дистанции до 5 блоков урон снарядов -20%.",
+    "downside": "event"
+  },
+  {
+    "tree": "keen_instinct",
+    "branch": "Hunter",
+    "profile": "ranger",
+    "specialization": "Попадание по монстру накладывает Glowing на 5 сек.; по уже подсвеченной цели +10% урона.",
+    "mastery": "По подсвеченной цели +22% и Rend I на 3 сек. Цена: смена цели снимает бонус на 4 сек.",
+    "downside": "event"
+  },
+  {
+    "tree": "keen_instinct",
+    "branch": "Sentinel",
+    "profile": "ranger",
+    "specialization": "Если стоять на месте 2 сек., следующий выстрел получает +15% урона и игрок Fortify I на 3 сек.",
+    "mastery": "Подготовленный выстрел +28%, Fortify II. Цена: постоянно -10% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.1,
+        1,
+        "-10% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "windrunner",
+    "branch": "Gale Dancer",
+    "profile": "ranger",
+    "specialization": "После каста Wind-заклинания Iron’s следующий выстрел в течение 5 сек. получает +18% урона и Hastened I.",
+    "mastery": "Следующий выстрел +30% и накладывает Airborne I на цель. Цена: постоянно -10% брони.",
+    "downside": "event"
+  },
+  {
+    "tree": "windrunner",
+    "branch": "Stormshot",
+    "profile": "ranger",
+    "specialization": "Каждое третье попадание стрелой накладывает Charged I на цель и наносит +20% урона.",
+    "mastery": "Каждое третье попадание +35% и дополнительно накладывает Volt Strike I. Цена: постоянно -12% урона обычной ближней атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.12,
+        1,
+        "-12% ближнего урона"
+      ]
+    ]
+  },
+  {
+    "tree": "windrunner",
+    "branch": "Skirmisher",
+    "profile": "ranger",
+    "specialization": "Во время спринта следующий выстрел получает +15% урона и Hastened I.",
+    "mastery": "Во время спринта выстрел получает +25% и Evasion I на 2 сек. Цена: постоянно -10% максимального здоровья.",
+    "downside": [
+      [
+        "minecraft:generic.max_health",
+        -0.1,
+        1,
+        "-10% максимального здоровья"
+      ]
+    ]
+  },
+  {
+    "tree": "pathfinder",
+    "branch": "Beastmaster",
+    "profile": "pet",
+    "specialization": "Прирученный OwnableEntity наносит +25% урона и получает на 15% меньше урона.",
+    "mastery": "Питомец +45% урона и -25% входящего урона. Цена: постоянно -15% личного урона игрока.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.15,
+        1,
+        "-15% личного урона"
+      ]
+    ]
+  },
+  {
+    "tree": "pathfinder",
+    "branch": "Dragon Rider",
+    "profile": "mount",
+    "specialization": "На настоящем маунте Ice and Fire получает +15% урона и Fire Resistance.",
+    "mastery": "На драконьем маунте бонус +28% и Fortify I. Цена: пешком постоянно -12% урона.",
+    "downside": "event"
+  },
+  {
+    "tree": "pathfinder",
+    "branch": "Trailblazer",
+    "profile": "adventurer",
+    "specialization": "После смены измерения на 20 сек. получает Hastened I и Resistance I.",
+    "mastery": "Также получает Planar Sight I на 20 сек. Цена: первые 5 сек. после перехода Weakness I.",
+    "downside": "event"
+  },
+  {
+    "tree": "archmage",
+    "branch": "Elementalist",
+    "profile": "elementalist",
+    "specialization": "Каст Fire/Ice/Lightning/Nature заклинания даёт на 6 сек. соответствующий +12% school spell power.",
+    "mastery": "Бонус школы +25%. Цена: пока усилена одна школа, остальные четыре получают -10% spell power.",
+    "downside": "dynamic"
+  },
+  {
+    "tree": "archmage",
+    "branch": "Occultist",
+    "profile": "occult",
+    "specialization": "Blood/Ender/Eldritch заклинания получают +15% уровня/силы через Iron’s cast event.",
+    "mastery": "Бонус сильнее; Blood-каст накладывает Sacrificial Mark на самого мага, Ender/Eldritch — Soul Burn I на 3 сек. Цена: постоянно -15% получаемого лечения.",
+    "downside": [
+      [
+        "attributeslib:healing_received",
+        -0.15,
+        1,
+        "-15% получаемого лечения"
+      ]
+    ]
+  },
+  {
+    "tree": "archmage",
+    "branch": "Arcanist",
+    "profile": "mage",
+    "specialization": "После каста Iron’s получает Ars Nouveau Mana Regen I на 4 сек.; Ars spell damage/utility остаются нативными.",
+    "mastery": "Дополнительно Ars Spell Damage I на 4 сек. Цена: постоянно -12% физического урона.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.12,
+        1,
+        "-12% физического урона"
+      ]
+    ]
+  },
+  {
+    "tree": "manaflow",
+    "branch": "Channeler",
+    "profile": "mana",
+    "specialization": "Касты Iron’s стоят на 8% меньше маны и дают Casting Movespeed через Hastened I на 2 сек.",
+    "mastery": "Стоимость -18%, Hastened длится 4 сек. Цена: получение тяжёлого удара накладывает Slowed I на 4 сек.",
+    "downside": "event"
+  },
+  {
+    "tree": "manaflow",
+    "branch": "Reservoir",
+    "profile": "mana",
+    "specialization": "При запасе маны выше 70% получает +12% Spell Power.",
+    "mastery": "Выше 70% +22% Spell Power и Fortify I. Цена: ниже 25% маны получает -20% Spell Power и Slowed I.",
+    "downside": "dynamic"
+  },
+  {
+    "tree": "manaflow",
+    "branch": "Overcaster",
+    "profile": "mana",
+    "specialization": "Заклинания Iron’s получают +1 уровень, но стоят на 25% больше маны.",
+    "mastery": "Получают +2 уровня и стоят на 45% больше маны. После каста Soul Burn I на 3 сек. Цена встроена в каждый каст.",
+    "downside": "event"
+  },
+  {
+    "tree": "arcane_ward",
+    "branch": "Aegis",
+    "profile": "spellguard",
+    "specialization": "После получения магического урона на 6 сек. получает +20% сопротивления соответствующей школе Iron’s.",
+    "mastery": "Сопротивление школе +35%. Цена: остальные школы в это окно имеют -10% сопротивления.",
+    "downside": "dynamic"
+  },
+  {
+    "tree": "arcane_ward",
+    "branch": "Spellbreaker",
+    "profile": "spellguard",
+    "specialization": "После магического попадания раз в 10 сек. получает Spell Resist и Evasion I на 3 сек.",
+    "mastery": "Окно 5 сек. и Fortify I. Цена: постоянно -15% собственного Spell Power.",
+    "downside": [
+      [
+        "irons_spellbooks:spell_power",
+        -0.15,
+        1,
+        "-15% силы собственных заклинаний"
+      ]
+    ]
+  },
+  {
+    "tree": "arcane_ward",
+    "branch": "Runewarden",
+    "profile": "mage",
+    "specialization": "После установки/срабатывания Ars Rune-подобной магии получает Ars Shielding I на 5 сек.; обычный входящий удар также может обновить Shielding раз в 10 сек.",
+    "mastery": "Shielding II и Ars Mana Regen I. Цена: постоянно -10% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.1,
+        1,
+        "-10% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "master_builder",
+    "branch": "Architect",
+    "profile": "builder",
+    "specialization": "Установка блока даёт Ars Nouveau Scrying I на 4 сек. и краткий Haste I; срабатывает не чаще раза в 3 сек.",
+    "mastery": "Дополнительно Ars Shielding I на 4 сек. Цена: постоянно -15% урона атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.15,
+        1,
+        "-15% урона атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "master_builder",
+    "branch": "Engineer",
+    "profile": "builder",
+    "specialization": "Установка redstone-компонента даёт Haste I и Ars Mana Regen I на 5 сек.",
+    "mastery": "Также даёт Shielding I. Цена: вдали от собственных механизмов боевого бонуса нет; постоянно -8% скорости атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_speed",
+        -0.08,
+        1,
+        "-8% скорости атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "master_builder",
+    "branch": "Fortifier",
+    "profile": "tank",
+    "specialization": "После установки твёрдого блока получает Fortify I на 4 сек.",
+    "mastery": "Fortify II на 5 сек. Цена: постоянно -12% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.12,
+        1,
+        "-12% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "enduring_tools",
+    "branch": "Smith",
+    "profile": "builder",
+    "specialization": "Добыча руды или ремонт восстанавливает 2 прочности предмета в основной руке и даёт Haste I на 2 сек.",
+    "mastery": "Восстанавливает 5 прочности и даёт Fortify I. Цена: постоянно -10% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.1,
+        1,
+        "-10% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "enduring_tools",
+    "branch": "Temperer",
+    "profile": "builder",
+    "specialization": "Инструмент выше 80% прочности получает +12% mining speed; ниже 25% — бонус пропадает.",
+    "mastery": "Выше 80% +25% mining speed. Цена: ниже 25% прочности -15% mining speed.",
+    "downside": [
+      [
+        "attributeslib:mining_speed",
+        0,
+        1,
+        "Состояние зависит от прочности инструмента"
+      ]
+    ]
+  },
+  {
+    "tree": "enduring_tools",
+    "branch": "Runesmith",
+    "profile": "mage",
+    "specialization": "С экипированным магическим/Runic предметом Simply Swords после каста получает Ars Shielding I на 3 сек.",
+    "mastery": "Shielding II и Mana Regen I. Цена: постоянно -12% обычного attack damage.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.12,
+        1,
+        "-12% обычного урона"
+      ]
+    ]
+  },
+  {
+    "tree": "prospector",
+    "branch": "Deep Delver",
+    "profile": "builder",
+    "specialization": "Ниже Y=32 получает Haste I и Resistance I.",
+    "mastery": "Ниже Y=0 получает Haste II и Fortify I. Цена: на поверхности выше Y=80 получает Slowness I.",
+    "downside": "dynamic"
+  },
+  {
+    "tree": "prospector",
+    "branch": "Gem Hunter",
+    "profile": "builder",
+    "specialization": "Добыча руды/драгоценного блока даёт Ars Magic Find I на 8 сек.",
+    "mastery": "Magic Find II на 10 сек. Цена: постоянно -12% урона атаки.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.12,
+        1,
+        "-12% урона атаки"
+      ]
+    ]
+  },
+  {
+    "tree": "prospector",
+    "branch": "Excavator",
+    "profile": "builder",
+    "specialization": "Добыча руды даёт Haste II на 4 сек.; Geomancy/Earth-магия получает +10% Nature Spell Power в это окно.",
+    "mastery": "Haste III и +20% Nature Spell Power. Цена: постоянно -10% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.1,
+        1,
+        "-10% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "wayfarer",
+    "branch": "Dimension Walker",
+    "profile": "adventurer",
+    "specialization": "После смены измерения получает Iron’s Planar Sight I и Hastened I на 15 сек.",
+    "mastery": "Эффекты 25 сек. и Evasion I на 5 сек. Цена: после перехода Slowed I на первые 3 сек.",
+    "downside": "event"
+  },
+  {
+    "tree": "wayfarer",
+    "branch": "Pilgrim",
+    "profile": "adventurer",
+    "specialization": "После 30 сек. непрерывного движения вне боя получает Vigor I и Speed I.",
+    "mastery": "Также Regeneration I. Цена: остановка более чем на 5 сек. накладывает Weakness I на 5 сек.",
+    "downside": "dynamic"
+  },
+  {
+    "tree": "wayfarer",
+    "branch": "Cartographer",
+    "profile": "adventurer",
+    "specialization": "При входе в новый биом получает Ars Scrying I на 8 сек. и Luck I.",
+    "mastery": "Scrying II и Luck II. Цена: в уже отмеченном биоме бонус не повторяется.",
+    "downside": "state"
+  },
+  {
+    "tree": "treasure_hunter",
+    "branch": "Relic Seeker",
+    "profile": "relic",
+    "specialization": "За каждый реально экипированный Relics/Artifacts предмет получает небольшой Luck и +3% урона, максимум 3 предмета.",
+    "mastery": "Максимум 5 реально экипированных Relics/Artifacts предметов. Цена: постоянно -10% максимального здоровья.",
+    "downside": [
+      [
+        "minecraft:generic.max_health",
+        -0.1,
+        1,
+        "-10% максимального здоровья на Mastery"
+      ]
+    ]
+  },
+  {
+    "tree": "treasure_hunter",
+    "branch": "Fortune Hunter",
+    "profile": "adventurer",
+    "specialization": "После убийства элиты/монстра 20% шанс получить Ars Magic Find I на 8 сек.",
+    "mastery": "Шанс 35%, Magic Find II. Цена: постоянно -10% брони.",
+    "downside": [
+      [
+        "minecraft:generic.armor",
+        -0.1,
+        1,
+        "-10% брони"
+      ]
+    ]
+  },
+  {
+    "tree": "treasure_hunter",
+    "branch": "Archaeologist",
+    "profile": "adventurer",
+    "specialization": "При первом входе в структуру/новый биом получает Luck II и Scrying I на 10 сек.",
+    "mastery": "Дополнительно Resistance I на 8 сек. Цена: против обычных мобов постоянно -8% урона.",
+    "downside": [
+      [
+        "minecraft:generic.attack_damage",
+        -0.08,
+        1,
+        "-8% урона по обычным целям"
+      ]
+    ]
+  },
+  {
+    "tree": "survivor",
+    "branch": "Last Stand",
+    "profile": "survival",
+    "specialization": "Ниже 25% здоровья получает Fortify I и Vigor I.",
+    "mastery": "Fortify II + Vigor II. Цена: постоянно -20% получаемого лечения.",
+    "downside": [
+      [
+        "attributeslib:healing_received",
+        -0.2,
+        1,
+        "-20% получаемого лечения"
+      ]
+    ]
+  },
+  {
+    "tree": "survivor",
+    "branch": "Wastelander",
+    "profile": "survival",
+    "specialization": "Урон среды снижен на 20%; после него получает Iron’s Fortify I на 3 сек.",
+    "mastery": "Снижение 35%; дополнительно Fire Resistance. Цена: постоянно -8% скорости передвижения.",
+    "downside": [
+      [
+        "minecraft:generic.movement_speed",
+        -0.08,
+        1,
+        "-8% скорости передвижения"
+      ]
+    ]
+  },
+  {
+    "tree": "survivor",
+    "branch": "Monster Slayer",
+    "profile": "offense",
+    "specialization": "По настоящим боссам Cataclysm/Mowzie/Twilight/Aquamirae/Alex’s Caves наносит +18% урона и накладывает Rend I.",
+    "mastery": "По распознанным боссам +32% и Sundering I. Цена: по обычным мобам -12% урона.",
+    "downside": "event"
+  }
+]

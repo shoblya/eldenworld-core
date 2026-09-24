@@ -514,6 +514,13 @@ public final class FinalSpecializationEventsV2 {
     }
 
     @SubscribeEvent
+    public static void clone(PlayerEvent.Clone e){
+        if(!(e.getEntity() instanceof ServerPlayer p))return;
+        CompoundTag oldRoot=e.getOriginal().getPersistentData().getCompound(SPEC_ROOT);
+        if(!oldRoot.isEmpty())p.getPersistentData().put(SPEC_ROOT,oldRoot.copy());
+    }
+
+    @SubscribeEvent
     public static void dimension(PlayerEvent.PlayerChangedDimensionEvent e){
         if(!(e.getEntity() instanceof ServerPlayer p))return;long n=now(p);
         AbilityState.setLong(p,TRAIL_DIM_SINCE,n);AbilityState.setString(p,TRAIL_TYPE,"");AbilityState.setLong(p,TRAIL_UNTIL,0L);

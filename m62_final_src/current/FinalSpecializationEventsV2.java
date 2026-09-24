@@ -194,10 +194,18 @@ public final class FinalSpecializationEventsV2 {
             LivingEntity t=e.getEntity();ItemStack w=a.getMainHandItem();float x=e.getAmount();boolean pr=projectile(e);long n=now(a);
 
             // ROGUE
-            if(h(a,"shadowstep/nightblade/specialization")&&!pr&&n<=AbilityState.getLong(a,NB_WINDOW)){
+            if(h(a,"shadowstep/nightblade/specialization")&&!pr){
                 boolean was=markedBy(t,a);
-                x*=1.15f;AbilityState.setLong(a,NB_WINDOW,0L);
-                if(was&&m(a,"shadowstep/nightblade")){x+=4.0f;clearMark(t);}else mark(t,a,5);
+                if(was&&m(a,"shadowstep/nightblade")){
+                    x+=4.0f;
+                    AbilityState.setString(a,"m62_nb_detonated_target",t.getUUID().toString());
+                    AbilityState.setLong(a,"m62_nb_detonated_until",n+20L);
+                    clearMark(t);
+                }else if(n<=AbilityState.getLong(a,NB_WINDOW)){
+                    x*=1.15f;
+                    AbilityState.setLong(a,NB_WINDOW,0L);
+                    mark(t,a,5);
+                }
             }
             if(h(a,"ghost/assassin/specialization")&&!pr&&light(w)){
                 String active=AbilityState.getString(a,"m62_assassin_target");
@@ -488,9 +496,18 @@ public final class FinalSpecializationEventsV2 {
         if(!(e.getSource().getEntity() instanceof ServerPlayer p))return;
         LivingEntity killed=e.getEntity();long n=now(p);
 
-        if(markedBy(killed,p)){
-            if(m(p,"ghost/assassin")&&cd(p,"m62_assassin_reward",160L))effect(p,"irons_spellbooks:true_invisibility",2,0);
-            if(m(p,"shadowstep/nightblade"))AbilityState.setLong(p,NB_REWARD,n+60L);
+        boolean stillMarked=markedBy(killed,p);
+        boolean nightDetonationKill=killed.getUUID().toString().equals(AbilityState.getString(p,"m62_nb_detonated_target"))
+                && n<=AbilityState.getLong(p,"m62_nb_detonated_until");
+        if(stillMarked&&m(p,"ghost/assassin")&&cd(p,"m62_assassin_reward",160L)){
+            effect(p,"irons_spellbooks:true_invisibility",2,0);
+        }
+        if(m(p,"shadowstep/nightblade")&&(stillMarked||nightDetonationKill)&&cd(p,"m62_night_reward",160L)){
+            AbilityState.setLong(p,NB_REWARD,n+60L);
+        }
+        if(nightDetonationKill){
+            AbilityState.setString(p,"m62_nb_detonated_target","");
+            AbilityState.setLong(p,"m62_nb_detonated_until",0L);
         }
         if(h(p,"treasure_hunter/fortune_hunter/specialization")&&elite(killed)&&p.getRandom().nextFloat()<(m(p,"treasure_hunter/fortune_hunter")?.35f:.20f))effect(p,"ars_nouveau:magic_find",m(p,"treasure_hunter/fortune_hunter")?10:8,m(p,"treasure_hunter/fortune_hunter")?1:0);
         if(h(p,"survivor/monster_slayer/specialization")&&boss(killed))recordTrophy(p,entityId(killed));

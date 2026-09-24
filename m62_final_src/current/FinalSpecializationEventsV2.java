@@ -446,7 +446,14 @@ public final class FinalSpecializationEventsV2 {
 
             // Last Stand window triggers when this hit would put the player at <=25% HP.
             if(h(d,"survivor/last_stand/specialization")&&d.getHealth()-x<=d.getMaxHealth()*.25f&&cd(d,"m62_laststand",900L)){
-                int sec=m(d,"survivor/last_stand")?8:6;effect(d,"irons_spellbooks:fortify",sec,m(d,"survivor/last_stand")?1:0);effect(d,"irons_spellbooks:vigor",sec,m(d,"survivor/last_stand")?1:0);AbilityState.setLong(d,LAST_STAND,n+sec*20L);
+                int sec=m(d,"survivor/last_stand")?8:6;
+                effect(d,"irons_spellbooks:fortify",sec,m(d,"survivor/last_stand")?1:0);
+                effect(d,"irons_spellbooks:vigor",sec,m(d,"survivor/last_stand")?1:0);
+                AbilityState.setLong(d,LAST_STAND,n+sec*20L);
+                if(m(d,"survivor/last_stand")){
+                    AbilityState.setLong(d,"m62_laststand_penalty_at",n+sec*20L);
+                    AbilityState.setInt(d,"m62_laststand_penalty_done",0);
+                }
             }
 
             // Paladin ally aura: one nearby Paladin is enough; do not stack.
@@ -482,7 +489,9 @@ public final class FinalSpecializationEventsV2 {
 
         // Last Stand Mastery can convert a lethal hit only while its short survival window is active.
         if(m(p,"survivor/last_stand")&&n<=AbilityState.getLong(p,LAST_STAND)&&cd(p,"m62_laststand_lethal",2400L)){
-            e.setAmount(Math.max(0,p.getHealth()-1f));effectPath(p,"lingering_strain",8,0);effect(p,"attributeslib:grievous",20,1);return;
+            e.setAmount(Math.max(0,p.getHealth()-1f));
+            effectPath(p,"lingering_strain",8,0);
+            return;
         }
 
         ServerPlayer pal=nearbyPaladin(p,true);
@@ -639,6 +648,13 @@ public final class FinalSpecializationEventsV2 {
             vanilla(p,MobEffects.WEAKNESS,12,1);
             effect(p,"attributeslib:grievous",20,0);
             AbilityState.setInt(p,REV_PENALTY_DONE,1);
+        }
+        if(m(p,"survivor/last_stand")
+                && AbilityState.getLong(p,"m62_laststand_penalty_at")>0
+                && n>AbilityState.getLong(p,"m62_laststand_penalty_at")
+                && AbilityState.getInt(p,"m62_laststand_penalty_done")==0){
+            effect(p,"attributeslib:grievous",20,1);
+            AbilityState.setInt(p,"m62_laststand_penalty_done",1);
         }
 
         // Channeler Flow expires after 4 sec. without a cast; Mastery turns the break into a short mana-cost penalty.

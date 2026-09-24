@@ -97,6 +97,7 @@ public final class KeystoneAbilityEvents {
     private static final String PROSPECTOR_LAST_ORE = "prospector_last_ore";
     private static final String ARCANE_WARD_SCHOOL = "arcane_ward_school";
     private static final String ARCANE_WARD_EXPIRES = "arcane_ward_expires";
+    private static final String ARCANE_WARD_EXACT_UNTIL = "arcane_ward_exact_until";
     private static final String SURVIVOR_CD = "survivor_cd";
     private static final String SURVIVOR_ACTIVE = "survivor_active_until";
     private static final String TREASURE_BIOMES = "treasure_biomes";
@@ -470,8 +471,12 @@ public final class KeystoneAbilityEvents {
             }
 
             if (AbilityUtil.has(victim, KeystoneIds.ARCANE_WARD) && AbilityUtil.isMagicLike(event.getSource())) {
-                AbilityState.setString(victim, ARCANE_WARD_SCHOOL, detectMagicResistanceAttribute(event.getSource()));
-                AbilityState.setLong(victim, ARCANE_WARD_EXPIRES, now + 20L * 8L);
+                // Iron's SpellDamageEvent fires before LivingHurtEvent and records the exact
+                // registered school. Only use DamageSource parsing when no exact school was captured.
+                if (now > AbilityState.getLong(victim, ARCANE_WARD_EXACT_UNTIL)) {
+                    AbilityState.setString(victim, ARCANE_WARD_SCHOOL, detectMagicResistanceAttribute(event.getSource()));
+                    AbilityState.setLong(victim, ARCANE_WARD_EXPIRES, now + 20L * 8L);
+                }
             }
         }
 
@@ -606,6 +611,35 @@ public final class KeystoneAbilityEvents {
         if (AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER) && event.getExpToDrop() > 0) {
             event.setExpToDrop(withTreasureXpBonus(player, event.getExpToDrop(), 0.08));
         }
+    }
+
+    static void markArcaneWardExactSchool(ServerPlayer player, ResourceLocation schoolId) {
+        if (player == null || schoolId == null || !AbilityUtil.has(player, KeystoneIds.ARCANE_WARD)) return;
+        String schoolPath = schoolId.getPath().toLowerCase(Locale.ROOT);
+        ResourceLocation best = null;
+        int bestScore = Integer.MIN_VALUE;
+
+        for (ResourceLocation key : ForgeRegistries.ATTRIBUTES.getKeys()) {
+            String path = key.getPath().toLowerCase(Locale.ROOT);
+            if (!path.contains("magic_resist")) continue;
+
+            int score = 0;
+            if (key.getNamespace().equals(schoolId.getNamespace())) score += 100;
+            if (path.contains(schoolPath)) score += 80;
+
+            for (String token : schoolPath.split("[_/\\.-]+")) {
+                if (token.length() >= 3 && path.contains(token)) score += 10;
+            }
+            if (score > bestScore && score > 0) {
+                bestScore = score;
+                best = key;
+            }
+        }
+
+        long now = player.level().getGameTime();
+        AbilityState.setString(player, ARCANE_WARD_SCHOOL, best == null ? "" : best.toString());
+        AbilityState.setLong(player, ARCANE_WARD_EXPIRES, now + 20L * 8L);
+        AbilityState.setLong(player, ARCANE_WARD_EXACT_UNTIL, now + 2L);
     }
 
     private static String detectMagicResistanceAttribute(net.minecraft.world.damagesource.DamageSource source) {

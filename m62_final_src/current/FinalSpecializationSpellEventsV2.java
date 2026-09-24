@@ -5,6 +5,7 @@ import com.eldenworld.core.abilities.AbilityState;
 import com.hollingsworth.arsnouveau.api.event.SpellCastEvent;
 import com.hollingsworth.arsnouveau.api.event.SpellCostCalcEvent;
 import io.redspace.ironsspellbooks.api.events.SpellOnCastEvent;
+import io.redspace.ironsspellbooks.api.events.SpellDamageEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -37,6 +38,14 @@ public final class FinalSpecializationSpellEventsV2 {
         if(FinalSpecializationEventsV2.has(p,"archmage/occultist/specialization")&&isOccult(school,spell)){
             handleOccultist(p,n);
         }
+        if(FinalSpecializationEventsV2.has(p,"ghost/specter/specialization")&&isOccult(school,spell)){
+            if(FinalSpecializationEventsV2.mastery(p,"ghost/specter")
+                    &&FinalSpecializationEventsV2.specterSouls(p)>=3){
+                AbilityState.setLong(p,"m62_specter_finisher_until",n+100L);
+            }else{
+                FinalSpecializationEventsV2.gainSpecterSoul(p);
+            }
+        }
 
         if(FinalSpecializationEventsV2.has(p,"archmage/arcanist/specialization")){
             boolean repeated=handleWeave(p,"iron",n);
@@ -63,10 +72,10 @@ public final class FinalSpecializationSpellEventsV2 {
 
         if(FinalSpecializationEventsV2.has(p,"arcane_ward/aegis/specialization")&&FinalSpecializationEventsV2.mastery(p,"arcane_ward/aegis")){
             String ward=AbilityState.getString(p,AEGIS_SCHOOL);
-            String castSchool=schoolKey(school,spell);
-            if(!ward.isEmpty()&&ward.equals(castSchool)&&n<=AbilityState.getLong(p,AEGIS_UNTIL)){
-                AbilityState.setString(p,"m62_aegis_burst_school",ward);
-                AbilityState.setLong(p,"m62_aegis_burst_until",n+40L);
+            String castSchool=!school.isEmpty()?school:schoolKey(school,spell);
+            if(!ward.isEmpty()&&sameSchool(ward,castSchool)&&n<=AbilityState.getLong(p,AEGIS_UNTIL)){
+                AbilityState.setString(p,"m62_aegis_damage_school",castSchool);
+                AbilityState.setLong(p,"m62_aegis_damage_until",n+100L);
                 AbilityState.setLong(p,AEGIS_UNTIL,0L);
             }
         }
@@ -87,6 +96,48 @@ public final class FinalSpecializationSpellEventsV2 {
             AbilityState.setLong(p,SOFTWARE,n+100L);
             FinalSpecializationEventsV2.applyEffectPath(p,"software",5,0);
             combineTechnomancer(p,n);
+        }
+    }
+
+    @SubscribeEvent
+    public static void ironsDamage(SpellDamageEvent e){
+        var source=e.getSpellDamageSource();
+        if(source==null||source.spell()==null||source.spell().getSchoolType()==null)return;
+        if(!(source.getEntity() instanceof ServerPlayer p))return;
+        long n=FinalSpecializationEventsV2.time(p);
+        String school=source.spell().getSchoolType().getId().toString().toLowerCase(Locale.ROOT);
+        var target=e.getEntity();
+
+        if(FinalSpecializationEventsV2.has(p,"ghost/specter/specialization")
+                &&FinalSpecializationEventsV2.mastery(p,"ghost/specter")
+                &&isOccult(school,"")
+                &&n<=AbilityState.getLong(p,"m62_specter_finisher_until")){
+            FinalSpecializationEventsV2.clearSpecterSouls(p);
+            AbilityState.setLong(p,"m62_specter_finisher_until",0L);
+            FinalSpecializationEventsV2.applyEffectPathTo(target,"soul_lock",3,0);
+            FinalSpecializationEventsV2.applyEffectTo(target,"irons_spellbooks:soul_burn",5,1);
+        }
+
+        if(FinalSpecializationEventsV2.has(p,"arcane_ward/spellbreaker/specialization")
+                &&n<=AbilityState.getLong(p,"m62_spellbreaker_until")
+                &&target.getUUID().toString().equals(AbilityState.getString(p,"m62_spellbreaker_target"))){
+            FinalSpecializationEventsV2.applyEffectPathTo(target,"blackout",
+                    FinalSpecializationEventsV2.mastery(p,"arcane_ward/spellbreaker")?5:4,
+                    FinalSpecializationEventsV2.mastery(p,"arcane_ward/spellbreaker")?1:0);
+            if(FinalSpecializationEventsV2.mastery(p,"arcane_ward/spellbreaker")){
+                FinalSpecializationEventsV2.applyEffectPathTo(target,"erode",4,0);
+            }
+            AbilityState.setLong(p,"m62_spellbreaker_until",0L);
+            AbilityState.setString(p,"m62_spellbreaker_target","");
+        }
+
+        String empowered=AbilityState.getString(p,"m62_aegis_damage_school");
+        if(FinalSpecializationEventsV2.mastery(p,"arcane_ward/aegis")
+                &&n<=AbilityState.getLong(p,"m62_aegis_damage_until")
+                &&sameSchool(empowered,school)){
+            e.setAmount(e.getAmount()*1.25f);
+            AbilityState.setLong(p,"m62_aegis_damage_until",0L);
+            AbilityState.setString(p,"m62_aegis_damage_school","");
         }
     }
 
@@ -206,6 +257,17 @@ public final class FinalSpecializationSpellEventsV2 {
         AbilityState.setLong(p,HARDWARE,n+100L);
         FinalSpecializationEventsV2.applyEffectPath(p,"hardware",5,0);
         combineTechnomancer(p,n);
+    }
+
+    private static boolean sameSchool(String a,String b){
+        if(a==null||b==null||a.isEmpty()||b.isEmpty())return false;
+        String x=a.toLowerCase(Locale.ROOT),y=b.toLowerCase(Locale.ROOT);
+        if(x.equals(y))return true;
+        String xp=x.contains(":")?x.substring(x.indexOf(':')+1):x;
+        String yp=y.contains(":")?y.substring(y.indexOf(':')+1):y;
+        if(xp.equals(yp))return true;
+        String kx=schoolKey(x,""),ky=schoolKey(y,"");
+        return !kx.isEmpty()&&kx.equals(ky);
     }
 
     static String schoolKey(String school,String spell){

@@ -47,7 +47,8 @@ public final class FinalSpecializationEventsV2 {
     private static final String PHANTOM_WINDOW="m62_phantom_window";
     private static final String DUEL_ROLL="m62_duel_roll", DUEL_EXPOSE="m62_duel_expose";
     private static final String GALE="m62_gale", SKIRMISH="m62_skirmish";
-    private static final String SPECTER_SOUL="m62_specter_soul", SPECTER_SOUL_UNTIL="m62_specter_soul_until";\n    private static final String OCCULT_SOUL="m62_occult_soul", OCCULT_SOUL_UNTIL="m62_occult_soul_until", OCCULT_BURST="m62_occult_burst";
+    private static final String SPECTER_SOUL="m62_specter_soul", SPECTER_SOUL_UNTIL="m62_specter_soul_until";
+    private static final String OCCULT_SOUL="m62_occult_soul", OCCULT_SOUL_UNTIL="m62_occult_soul_until", OCCULT_BURST="m62_occult_burst";
     private static final String TEMPO="m62_tempo", TEMPO_UNTIL="m62_tempo_until";
     private static final String BLOOD="m62_blood", BLOOD_LAST="m62_blood_last", VAMP_UNTIL="m62_vamp_until";
     private static final String RESOLVE="m62_resolve", RESOLVE_UNTIL="m62_resolve_until";
@@ -146,7 +147,8 @@ public final class FinalSpecializationEventsV2 {
     private static void clearMark(LivingEntity target){CompoundTag t=markTag(target);t.remove(DEATH_MARK_OWNER);t.remove(DEATH_MARK_UNTIL);}
 
     private static int inc(ServerPlayer p,String key,int max){int n=Math.min(max,AbilityState.getInt(p,key)+1);AbilityState.setInt(p,key,n);return n;}
-    private static void addSpecterSoul(ServerPlayer p){inc(p,SPECTER_SOUL,3);AbilityState.setLong(p,SPECTER_SOUL_UNTIL,now(p)+160L);}\n    private static void addOccultSoul(ServerPlayer p){inc(p,OCCULT_SOUL,3);AbilityState.setLong(p,OCCULT_SOUL_UNTIL,now(p)+160L);}
+    private static void addSpecterSoul(ServerPlayer p){inc(p,SPECTER_SOUL,3);AbilityState.setLong(p,SPECTER_SOUL_UNTIL,now(p)+160L);}
+    private static void addOccultSoul(ServerPlayer p){inc(p,OCCULT_SOUL,3);AbilityState.setLong(p,OCCULT_SOUL_UNTIL,now(p)+160L);}
     private static void addBlood(ServerPlayer p){
         long n=now(p);if(n-AbilityState.getLong(p,BLOOD_LAST)<20L)return;
         AbilityState.setLong(p,BLOOD_LAST,n);inc(p,BLOOD,5);
@@ -482,7 +484,8 @@ public final class FinalSpecializationEventsV2 {
         if(old!=null&&dist2(old,cur)<.01)AbilityState.setInt(p,MARKSMAN_STILL,Math.min(80,AbilityState.getInt(p,MARKSMAN_STILL)+10));else AbilityState.setInt(p,MARKSMAN_STILL,0);
         LAST_POS.put(p.getUUID(),cur);
 
-        if(n>AbilityState.getLong(p,SPECTER_SOUL_UNTIL))AbilityState.setInt(p,SPECTER_SOUL,0);\n        if(n>AbilityState.getLong(p,OCCULT_SOUL_UNTIL))AbilityState.setInt(p,OCCULT_SOUL,0);
+        if(n>AbilityState.getLong(p,SPECTER_SOUL_UNTIL))AbilityState.setInt(p,SPECTER_SOUL,0);
+        if(n>AbilityState.getLong(p,OCCULT_SOUL_UNTIL))AbilityState.setInt(p,OCCULT_SOUL,0);
         if(n>AbilityState.getLong(p,TEMPO_UNTIL))AbilityState.setInt(p,TEMPO,0);
         if(n>AbilityState.getLong(p,RESOLVE_UNTIL))AbilityState.setInt(p,RESOLVE,0);
         if(n>AbilityState.getLong(p,EARTH_UNTIL))AbilityState.setInt(p,EARTH,0);
@@ -504,9 +507,10 @@ public final class FinalSpecializationEventsV2 {
         setAttr(p,"minecraft:generic.attack_speed","tempo",tempo*.04);
         setAttrAdd(p,"attributeslib:crit_chance","tempo_crit",tempo*.02);
 
-        int souls=AbilityState.getInt(p,SOUL);
-        setOccultSchoolPower(p,"specter_soul",h(p,"ghost/specter/specialization")?souls*.04:0);
-        setOccultSchoolPower(p,"occult_soul",h(p,"archmage/occultist/specialization")?souls*.05:0);
+        int specterSouls=AbilityState.getInt(p,SPECTER_SOUL);
+        int occultSouls=AbilityState.getInt(p,OCCULT_SOUL);
+        setOccultSchoolPower(p,"specter_soul",h(p,"ghost/specter/specialization")?specterSouls*.04:0);
+        setOccultSchoolPower(p,"occult_soul",h(p,"archmage/occultist/specialization")?occultSouls*.05:0);
 
         int earth=AbilityState.getInt(p,EARTH);
         setElementSchoolPower(p,"earth","earth_charge",h(p,"enduring_tools/geomancer/specialization")?earth*.04:0);
@@ -632,9 +636,9 @@ public final class FinalSpecializationEventsV2 {
     static boolean has(ServerPlayer p,String s){return h(p,s);}
     static boolean mastery(ServerPlayer p,String s){return m(p,s);}
     static long time(ServerPlayer p){return now(p);}
-    static int souls(ServerPlayer p){return AbilityState.getInt(p,SOUL);}
-    static void gainSoul(ServerPlayer p){addSoul(p);}
-    static void clearSouls(ServerPlayer p){AbilityState.setInt(p,SOUL,0);AbilityState.setLong(p,SOUL_UNTIL,0);}
+    static int souls(ServerPlayer p){return AbilityState.getInt(p,OCCULT_SOUL);}
+    static void gainSoul(ServerPlayer p){addOccultSoul(p);}
+    static void clearSouls(ServerPlayer p){AbilityState.setInt(p,OCCULT_SOUL,0);AbilityState.setLong(p,OCCULT_SOUL_UNTIL,0);}
     static void setOccultBurst(ServerPlayer p,int ticks){AbilityState.setLong(p,OCCULT_BURST,now(p)+ticks);}
     static long occultBurstUntil(ServerPlayer p){return AbilityState.getLong(p,OCCULT_BURST);}
     static void markGale(ServerPlayer p){AbilityState.setLong(p,GALE,now(p)+100L);}

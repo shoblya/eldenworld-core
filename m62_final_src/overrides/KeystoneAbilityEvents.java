@@ -25,11 +25,14 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.LivingExperienceDropEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.ItemFishedEvent;
+import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.brewing.PlayerBrewedPotionEvent;
 
@@ -97,6 +100,8 @@ public final class KeystoneAbilityEvents {
     private static final String SURVIVOR_CD = "survivor_cd";
     private static final String SURVIVOR_ACTIVE = "survivor_active_until";
     private static final String TREASURE_BIOMES = "treasure_biomes";
+    private static final String TREASURE_XP_BANK = "EldenWorldM62TreasureXpBank";
+    private static final String TREASURE_FISH_PENDING = "EldenWorldM62TreasureFishPendingUntil";
     private static final String WAYFARER_BIOMES = "wayfarer_biomes";
     private static final String WAYFARER_DIMENSIONS = "wayfarer_dimensions";
     private static final String WAYFARER_BIOME_COUNT = "wayfarer_biome_count";
@@ -552,6 +557,36 @@ public final class KeystoneAbilityEvents {
     }
 
     @SubscribeEvent
+    public static void onMobExperience(LivingExperienceDropEvent event) {
+        if (!(event.getAttackingPlayer() instanceof ServerPlayer player)
+                || !AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER)
+                || event.getDroppedExperience() <= 0) return;
+        event.setDroppedExperience(withTreasureXpBonus(player, event.getDroppedExperience(), 0.08));
+    }
+
+    @SubscribeEvent
+    public static void onItemFished(ItemFishedEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER)) return;
+        player.getPersistentData().putLong(TREASURE_FISH_PENDING, player.level().getGameTime() + 40L);
+    }
+
+    @SubscribeEvent
+    public static void onXpPickup(PlayerXpEvent.PickupXp event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER)) return;
+        long until = player.getPersistentData().getLong(TREASURE_FISH_PENDING);
+        if (until <= 0 || player.level().getGameTime() > until) return;
+        int base = event.getOrb().getValue();
+        // Vanilla fishing experience is 1-6. Restrict the pending hook to this range
+        // so a nearby large mob/boss orb cannot accidentally consume the fishing bonus.
+        if (base < 1 || base > 6) return;
+        int extra = treasureXpExtra(player, base, 0.08);
+        if (extra > 0) player.giveExperiencePoints(extra);
+        player.getPersistentData().remove(TREASURE_FISH_PENDING);
+    }
+
+    @SubscribeEvent
     public static void onBreakBlock(BlockEvent.BreakEvent event) {
         if (!(event.getPlayer() instanceof ServerPlayer player) || !(event.getLevel() instanceof ServerLevel level)) {
             return;
@@ -567,6 +602,9 @@ public final class KeystoneAbilityEvents {
                     : 1;
             AbilityState.setInt(player, PROSPECTOR_STACKS, stacks);
             AbilityState.setLong(player, PROSPECTOR_LAST_ORE, now);
+        }
+        if (AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER) && event.getExpToDrop() > 0) {
+            event.setExpToDrop(withTreasureXpBonus(player, event.getExpToDrop(), 0.08));
         }
     }
 
@@ -639,17 +677,37 @@ public final class KeystoneAbilityEvents {
         if (ownFood) player.getFoodData().eat(1, 0.0f);
         Map<ResourceLocation, Integer> before = COOK_EFFECT_SNAPSHOT.remove(player.getUUID());
         if (before == null) before = Map.of();
+        double durationMultiplier = 1.10;
+        if (ownFood && AbilityUtil.has(player, id("eldenworld:prospector/chef/specialization"))) {
+            durationMultiplier = 1.20;
+        }
+        if (ownPotion && AbilityUtil.has(player, id("eldenworld:prospector/brewer/specialization"))) {
+            durationMultiplier = AbilityUtil.has(player, id("eldenworld:prospector/brewer/mastery")) ? 1.40 : 1.25;
+        }
+
         List<MobEffectInstance> boosted = new ArrayList<>();
         for (MobEffectInstance inst : player.getActiveEffects()) {
             if (!inst.getEffect().isBeneficial()) continue;
             ResourceLocation key = ForgeRegistries.MOB_EFFECTS.getKey(inst.getEffect());
             int old = key == null ? -1 : before.getOrDefault(key, -1);
             if (old < 0 || inst.getDuration() > old + 5) {
-                boosted.add(new MobEffectInstance(inst.getEffect(), (int)Math.ceil(inst.getDuration() * 1.10), inst.getAmplifier(),
+                boosted.add(new MobEffectInstance(inst.getEffect(), (int)Math.ceil(inst.getDuration() * durationMultiplier), inst.getAmplifier(),
                         inst.isAmbient(), inst.isVisible(), inst.showIcon()));
             }
         }
         for (MobEffectInstance inst : boosted) player.addEffect(inst);
+    }
+
+    private static int withTreasureXpBonus(ServerPlayer player, int base, double pct) {
+        return base + treasureXpExtra(player, base, pct);
+    }
+
+    private static int treasureXpExtra(ServerPlayer player, int base, double pct) {
+        if (base <= 0) return 0;
+        double bank = player.getPersistentData().getDouble(TREASURE_XP_BANK) + base * pct;
+        int extra = (int)Math.floor(bank + 1.0e-9);
+        player.getPersistentData().putDouble(TREASURE_XP_BANK, bank - extra);
+        return extra;
     }
 
     private static void tagCookItem(ServerPlayer player, ItemStack stack) {

@@ -205,7 +205,15 @@ public final class FinalSpecializationEventsV2 {
                 if(trueInvisible(a)){x*=1.25f;mark(t,a,6);AbilityState.setString(a,"m62_assassin_target",t.getUUID().toString());AbilityState.setLong(a,"m62_assassin_until",n+120L);}
                 if(was&&t.getHealth()<=t.getMaxHealth()*.30f)x*=m(a,"ghost/assassin")?1.35f:1.15f;
             }
-            if(h(a,"ghost/specter/specialization")&&!pr&&scythe(w))addSpecterSoul(a);
+            if(h(a,"ghost/specter/specialization")&&!pr&&scythe(w)){
+                addSpecterSoul(a);
+                if(m(a,"ghost/specter")&&AbilityState.getInt(a,SPECTER_SOUL)>=3){
+                    AbilityState.setInt(a,SPECTER_SOUL,0);
+                    AbilityState.setLong(a,SPECTER_SOUL_UNTIL,0L);
+                    effectPath(t,"soul_lock",3,0);
+                    effect(t,"irons_spellbooks:soul_burn",5,1);
+                }
+            }
 
             if(h(a,"opportunist/duelist/specialization")&&!pr&&a.getOffhandItem().isEmpty()&&oneHanded(w)){
                 int tempo=AbilityState.getInt(a,TEMPO);
@@ -491,6 +499,10 @@ public final class FinalSpecializationEventsV2 {
             double mul=m(p,"enduring_tools/prospector")?1.30:1.15;e.setExpToDrop((int)Math.ceil(e.getExpToDrop()*mul));
             if(p.getRandom().nextFloat()<(m(p,"enduring_tools/prospector")?.35f:.20f))effect(p,"ars_nouveau:magic_find",m(p,"enduring_tools/prospector")?10:8,m(p,"enduring_tools/prospector")?1:0);
         }
+        if(h(p,"treasure_hunter/fortune_hunter/specialization")){
+            double mul=m(p,"treasure_hunter/fortune_hunter")?1.35:1.20;
+            e.setExpToDrop((int)Math.ceil(e.getExpToDrop()*mul));
+        }
         if(h(p,"enduring_tools/geomancer/specialization")){inc(p,EARTH,5);AbilityState.setLong(p,EARTH_UNTIL,n+200L);}
     }
 
@@ -636,6 +648,12 @@ public final class FinalSpecializationEventsV2 {
         int occultSouls=AbilityState.getInt(p,OCCULT_SOUL);
         setOccultSchoolPower(p,"specter_soul",h(p,"ghost/specter/specialization")?specterSouls*.04:0);
         setOccultSchoolPower(p,"occult_soul",h(p,"archmage/occultist/specialization")?occultSouls*.05:0);
+        setAttr(p,"attributeslib:healing_received","specter_soul_heal",h(p,"ghost/specter/specialization")&&specterSouls>0?-.25:0);
+        setAttr(p,"attributeslib:healing_received","occult_soul_heal",h(p,"archmage/occultist/specialization")&&occultSouls>0?-.25:0);
+
+        int flowStacks=AbilityState.getInt(p,"m62_flow");
+        setAttr(p,"irons_spellbooks:spell_power","channeler_flow_power",
+                h(p,"manaflow/channeler/specialization")&&m(p,"manaflow/channeler")&&flowStacks>=5?.10:0);
 
         if(h(p,"archmage/elementalist/specialization")){
             if(n>AbilityState.getLong(p,"m62_attune_until"))clearElementalPowers(p,"element_attune");
@@ -692,7 +710,7 @@ public final class FinalSpecializationEventsV2 {
         boolean feast=n<=AbilityState.getLong(p,FEAST_UNTIL);
         setAttr(p,"minecraft:generic.max_health","feast_hp",feast?.10:0);
         setAttr(p,"attributeslib:healing_received","feast_heal",feast?.10:0);
-        if(!feast&&AbilityState.getLong(p,FEAST_UNTIL)>0&&AbilityState.getInt(p,FEAST_WEAK_DONE)==0){vanilla(p,MobEffects.WEAKNESS,20,0);AbilityState.setInt(p,FEAST_WEAK_DONE,1);}
+        if(!feast&&m(p,"prospector/feastmaster")&&AbilityState.getLong(p,FEAST_UNTIL)>0&&AbilityState.getInt(p,FEAST_WEAK_DONE)==0){vanilla(p,MobEffects.WEAKNESS,20,0);AbilityState.setInt(p,FEAST_WEAK_DONE,1);}
         boolean feastAlly=hasNearbyFeastAura(p,n);
         setAttr(p,"minecraft:generic.attack_damage","feast_ally_damage",feastAlly?.10:0);
         setAttr(p,"minecraft:generic.movement_speed","feast_ally_move",feastAlly?.10:0);

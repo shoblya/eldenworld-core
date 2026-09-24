@@ -563,10 +563,15 @@ public final class KeystoneAbilityEvents {
 
     @SubscribeEvent
     public static void onMobExperience(LivingExperienceDropEvent event) {
-        if (!(event.getAttackingPlayer() instanceof ServerPlayer player)
-                || !AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER)
-                || event.getDroppedExperience() <= 0) return;
-        event.setDroppedExperience(withTreasureXpBonus(player, event.getDroppedExperience(), 0.08));
+        if (!(event.getAttackingPlayer() instanceof ServerPlayer player) || event.getDroppedExperience() <= 0) return;
+        double pct = AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER) ? 0.08 : 0.0;
+        if (AbilityUtil.has(player, id("eldenworld:treasure_hunter/fortune_hunter/specialization"))
+                && isFortuneTarget(event.getEntity())) {
+            pct += AbilityUtil.has(player, id("eldenworld:treasure_hunter/fortune_hunter/mastery")) ? 0.35 : 0.20;
+        }
+        if (pct > 0.0) {
+            event.setDroppedExperience(withTreasureXpBonus(player, event.getDroppedExperience(), pct));
+        }
     }
 
     @SubscribeEvent
@@ -608,9 +613,30 @@ public final class KeystoneAbilityEvents {
             AbilityState.setInt(player, PROSPECTOR_STACKS, stacks);
             AbilityState.setLong(player, PROSPECTOR_LAST_ORE, now);
         }
-        if (AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER) && event.getExpToDrop() > 0) {
-            event.setExpToDrop(withTreasureXpBonus(player, event.getExpToDrop(), 0.08));
+        if (event.getExpToDrop() > 0) {
+            double pct = AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER) ? 0.08 : 0.0;
+            if (AbilityUtil.has(player, id("eldenworld:treasure_hunter/fortune_hunter/specialization"))) {
+                pct += AbilityUtil.has(player, id("eldenworld:treasure_hunter/fortune_hunter/mastery")) ? 0.35 : 0.20;
+            }
+            if (AbilityUtil.has(player, id("eldenworld:enduring_tools/prospector/specialization"))) {
+                pct += AbilityUtil.has(player, id("eldenworld:enduring_tools/prospector/mastery")) ? 0.30 : 0.15;
+            }
+            if (pct > 0.0) {
+                event.setExpToDrop(withTreasureXpBonus(player, event.getExpToDrop(), pct));
+            }
         }
+    }
+
+    private static boolean isFortuneTarget(LivingEntity entity) {
+        ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        if (entity.getMaxHealth() >= 60.0f) return true;
+        if (key == null) return false;
+        String ns = key.getNamespace().toLowerCase(Locale.ROOT);
+        String path = key.getPath().toLowerCase(Locale.ROOT);
+        return path.contains("boss") || path.contains("warden") || path.contains("lord")
+                || path.contains("leviathan") || path.contains("ignis") || path.contains("harbinger")
+                || path.contains("nightwarden")
+                || (ns.equals("cataclysm") && entity.getMaxHealth() >= 40.0f);
     }
 
     static void markArcaneWardExactSchool(ServerPlayer player, ResourceLocation schoolId) {

@@ -3,6 +3,7 @@ package com.eldenworld.core.abilities;
 import com.eldenworld.core.EldenWorldCore;
 import io.redspace.ironsspellbooks.api.events.SpellOnCastEvent;
 import io.redspace.ironsspellbooks.api.events.SpellDamageEvent;
+import io.redspace.ironsspellbooks.api.events.SpellDamageEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -23,6 +24,20 @@ public final class IronsKeystoneEvents {
         } catch (RuntimeException ignored) {
             // LivingHurt fallback will handle non-standard or incompatible magic sources.
         }
+    }
+
+    @SubscribeEvent
+    public static void onSpellDamage(SpellDamageEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        var source = event.getSpellDamageSource();
+        if (source == null || source.spell() == null || source.spell().getSchoolType() == null) return;
+        var schoolId = source.spell().getSchoolType().getId();
+        if (schoolId == null) return;
+
+        long now = player.level().getGameTime();
+        AbilityState.setString(player, "m62_exact_spell_school", schoolId.toString());
+        AbilityState.setLong(player, "m62_exact_spell_school_until", now + 2L);
+        KeystoneAbilityEvents.markArcaneWardExactSchool(player, schoolId);
     }
 
     @SubscribeEvent

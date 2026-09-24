@@ -3,7 +3,6 @@ package com.eldenworld.core.specialization;
 import com.eldenworld.core.EldenWorldCore;
 import com.eldenworld.core.abilities.AbilityState;
 import com.eldenworld.core.abilities.AbilityUtil;
-import net.combat_roll.api.event.ServerSideRollEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -75,10 +74,32 @@ public final class FinalSpecializationEventsV2 {
     private static final Map<UUID,Long> FEAST_START=new HashMap<>();
 
     static {
+        registerCombatRollHook();
+    }
+
+    /**
+     * Combat Roll is an optional integration at compile time. At runtime we bind to
+     * ServerSideRollEvents.PLAYER_START_ROLLING from Combat Roll 1.3.3 using its
+     * public Event.register(listener) API. This keeps EldenWorld boot-safe when the
+     * optional mod is absent while still using the real server roll event when present.
+     */
+    private static void registerCombatRollHook() {
         try {
-            ServerSideRollEvents.PLAYER_START_ROLLING.register((player, velocity) -> onCombatRoll(player));
+            Class<?> events = Class.forName("net.combat_roll.api.event.ServerSideRollEvents");
+            Class<?> listener = Class.forName("net.combat_roll.api.event.ServerSideRollEvents$PlayerStartRolling");
+            Object event = events.getField("PLAYER_START_ROLLING").get(null);
+            Object proxy = java.lang.reflect.Proxy.newProxyInstance(
+                    listener.getClassLoader(), new Class<?>[]{listener},
+                    (obj, method, args) -> {
+                        if ("onPlayerStartedRolling".equals(method.getName())
+                                && args != null && args.length > 0 && args[0] instanceof ServerPlayer player) {
+                            onCombatRoll(player);
+                        }
+                        return null;
+                    });
+            event.getClass().getMethod("register", listener).invoke(event, proxy);
         } catch (Throwable ignored) {
-            // Combat Roll remains optional at class-load time; the pack normally provides it.
+            // No Combat Roll or an incompatible optional version: skip only this hook.
         }
     }
 

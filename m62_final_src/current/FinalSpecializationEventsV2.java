@@ -76,6 +76,7 @@ public final class FinalSpecializationEventsV2 {
     private static final Map<UUID,double[]> LAST_POS=new HashMap<>();
     private static final Map<UUID,LinkedHashSet<String>> FEAST_ITEMS=new HashMap<>();
     private static final Map<UUID,Long> FEAST_START=new HashMap<>();
+    private static final Map<UUID,Map<ResourceLocation,Integer>> BREWER_NEGATIVE_SEEN=new HashMap<>();
 
     static {
         registerCombatRollHook();
@@ -518,7 +519,6 @@ public final class FinalSpecializationEventsV2 {
             }
             if(h(p,"prospector/feastmaster/specialization"))registerFeastItem(p,used,n);
         }else if(h(p,"prospector/brewer/specialization")){
-            extendBeneficial(p,m(p,"prospector/brewer")?.40:.25);
             if(m(p,"prospector/brewer")&&cd(p,"m62_brewer_cleanse",1200L))removeOneNegative(p);
         }
     }
@@ -717,7 +717,7 @@ public final class FinalSpecializationEventsV2 {
 
         // Timed mastery penalties/effects.
         setAttr(p,"minecraft:generic.movement_speed","chef_slow",n<=AbilityState.getLong(p,"m62_chef_slow")?-.15:0);
-        setAttr(p,"minecraft:generic.spell_power","noop",0); // harmless cleanup sentinel; missing attribute is ignored
+        tickBrewerNegativeDuration(p);
         if(n>AbilityState.getLong(p,"m62_mirage_expose"))setAttr(p,"minecraft:generic.armor","mirage_expose",0);
         else if(AbilityState.getLong(p,"m62_mirage_expose")>0)setAttr(p,"minecraft:generic.armor","mirage_expose",-.20);
     }
@@ -778,10 +778,31 @@ public final class FinalSpecializationEventsV2 {
     }
 
     private static boolean ownedCook(ServerPlayer p,ItemStack s){return !s.isEmpty()&&s.hasTag()&&s.getTag().hasUUID(COOK_OWNER)&&p.getUUID().equals(s.getTag().getUUID(COOK_OWNER));}
-    private static void extendBeneficial(ServerPlayer p,double extra){
-        for(MobEffectInstance inst:new ArrayList<>(p.getActiveEffects()))if(inst.getEffect().isBeneficial()){
-            p.addEffect(new MobEffectInstance(inst.getEffect(),(int)Math.ceil(inst.getDuration()*(1.0+extra)),inst.getAmplifier(),inst.isAmbient(),inst.isVisible(),inst.showIcon()));
+    private static void tickBrewerNegativeDuration(ServerPlayer p){
+        if(!m(p,"prospector/brewer")){
+            BREWER_NEGATIVE_SEEN.remove(p.getUUID());
+            return;
         }
+        Map<ResourceLocation,Integer> seen=BREWER_NEGATIVE_SEEN.computeIfAbsent(p.getUUID(),u->new HashMap<>());
+        Set<ResourceLocation> active=new HashSet<>();
+        List<MobEffectInstance> boosted=new ArrayList<>();
+        for(MobEffectInstance inst:new ArrayList<>(p.getActiveEffects())){
+            if(inst.getEffect().isBeneficial())continue;
+            ResourceLocation key=ForgeRegistries.MOB_EFFECTS.getKey(inst.getEffect());
+            if(key==null)continue;
+            active.add(key);
+            int prev=seen.getOrDefault(key,-1);
+            int current=inst.getDuration();
+            if(prev<0||current>prev+5){
+                int duration=(int)Math.ceil(current*1.25);
+                boosted.add(new MobEffectInstance(inst.getEffect(),duration,inst.getAmplifier(),inst.isAmbient(),inst.isVisible(),inst.showIcon()));
+                seen.put(key,duration);
+            }else{
+                seen.put(key,current);
+            }
+        }
+        seen.keySet().retainAll(active);
+        for(MobEffectInstance inst:boosted)p.addEffect(inst);
     }
     private static void removeOneNegative(ServerPlayer p){for(MobEffectInstance inst:new ArrayList<>(p.getActiveEffects()))if(!inst.getEffect().isBeneficial()){p.removeEffect(inst.getEffect());return;}}
 

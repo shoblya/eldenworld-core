@@ -2,8 +2,6 @@ name: Extract M6.2 final sources
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ m6.2-final-build ]
 
 permissions:
   contents: write

@@ -108,6 +108,13 @@ public final class FinalSpecializationSpellEventsV2 {
         String school=source.spell().getSchoolType().getId().toString().toLowerCase(Locale.ROOT);
         var target=e.getEntity();
 
+        if(FinalSpecializationEventsV2.has(p,"archmage/arcanist/specialization")
+                &&FinalSpecializationEventsV2.mastery(p,"archmage/arcanist")
+                &&n<=AbilityState.getLong(p,"m62_weave_burst_until")){
+            e.setAmount(e.getAmount()*1.30f);
+            AbilityState.setLong(p,"m62_weave_burst_until",0L);
+        }
+
         if(FinalSpecializationEventsV2.has(p,"ghost/specter/specialization")
                 &&FinalSpecializationEventsV2.mastery(p,"ghost/specter")
                 &&isOccult(school,"")
@@ -138,6 +145,25 @@ public final class FinalSpecializationSpellEventsV2 {
             e.setAmount(e.getAmount()*1.25f);
             AbilityState.setLong(p,"m62_aegis_damage_until",0L);
             AbilityState.setString(p,"m62_aegis_damage_school","");
+        }
+    }
+
+    @SubscribeEvent
+    public static void arsDamage(com.hollingsworth.arsnouveau.api.event.SpellDamageEvent.Pre e){
+        if(!(e.caster instanceof ServerPlayer p))return;
+        if(!FinalSpecializationEventsV2.has(p,"archmage/arcanist/specialization"))return;
+        long n=FinalSpecializationEventsV2.time(p);
+
+        if(FinalSpecializationEventsV2.mastery(p,"archmage/arcanist")
+                &&n<=AbilityState.getLong(p,"m62_weave_burst_until")){
+            e.damage*=1.30f;
+            AbilityState.setLong(p,"m62_weave_burst_until",0L);
+            return;
+        }
+
+        int weave=AbilityState.getInt(p,WEAVE);
+        if(weave>0&&n-AbilityState.getLong(p,WEAVE_LAST)<=120L){
+            e.damage*=1.0f+.04f*weave;
         }
     }
 
@@ -232,6 +258,7 @@ public final class FinalSpecializationSpellEventsV2 {
             AbilityState.setInt(p,WEAVE,w);
             if(w>=4&&FinalSpecializationEventsV2.mastery(p,"archmage/arcanist")){
                 AbilityState.setLong(p,"m62_weave_burst_until",n+40L);
+                FinalSpecializationEventsV2.setAttr(p,"irons_spellbooks:cooldown_reduction","weave_burst_cdr",.40);
                 AbilityState.setInt(p,WEAVE,0);
             }
         }

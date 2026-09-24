@@ -49,7 +49,7 @@ jobs:
           p=r/'gradle.properties'
           s=p.read_text()
           import re
-          s=re.sub(r'mod_version=.*', 'mod_version=0.6.2.1-m6.2.1-fixed', s)
+          s=re.sub(r'mod_version=.*', 'mod_version=0.6.2.2-m6.2.2-restored', s)
           p.write_text(s)
           PY
 
@@ -122,8 +122,9 @@ jobs:
           assert not mastery_missing, mastery_missing
 
           scaling=Path('m62_final_src/overrides/WorldScalingEvents.java').read_text()
-          assert 'WorldProgressData' not in scaling and 'MaxLevelReached' not in scaling
-          assert 'total / count' in scaling and 'rescaleLoaded(server)' in scaling
+          assert 'WorldProgressData' in scaling and 'MaxLevelReached' in scaling
+          assert 'Math.max(observedMax' in scaling and 'data.setDirty()' in scaling
+          assert 'total / count' not in scaling and 'rescaleLoaded(server)' in scaling
           rootsrc=Path('m62_final_src/overrides/KeystoneAbilityEvents.java').read_text()
           for token in ('TREASURE_XP_BANK','PlayerBrewedPotionEvent','current * 0.70f','m62_second_wind_serial'):
               assert token in rootsrc, token
@@ -139,16 +140,16 @@ jobs:
           cp -r m5/src/main/resources/data/eldenworld/skill_trees dist/passive/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements dist/passive/data/eldenworld_core/
           cat > dist/passive/pack.mcmeta <<'EOF'
-          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.1 FIXED Passive Skill Tree"}}
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.2 RESTORED Passive Skill Tree"}}
           EOF
-          (cd dist/passive && zip -qr ../EldenWorld-Passive-Tree-M6.2.1-FIXED.zip .)
+          (cd dist/passive && zip -qr ../EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip .)
 
       - name: Package Mob Scaling datapack
         run: |
           set -euo pipefail
           mkdir -p dist/scaling/data/eldenworld_scaling/eldenworld_scaling/profiles
           cat > dist/scaling/pack.mcmeta <<'EOF'
-          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.1 FIXED Mob Scaling"}}
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.2 RESTORED Mob Scaling"}}
           EOF
           cat > dist/scaling/data/eldenworld_scaling/eldenworld_scaling/profiles/default.json <<'EOF'
           {
@@ -174,7 +175,7 @@ jobs:
           for tag in exclude include_hostiles elites standard_bosses benchmark_bosses; do
             printf '{"replace":false,"values":[]}\n' > "dist/scaling/data/eldenworld_scaling/tags/entity_types/${tag}.json"
           done
-          (cd dist/scaling && zip -qr ../EldenWorld-Mob-Scaling-M6.2.1-FIXED.zip .)
+          (cd dist/scaling && zip -qr ../EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip .)
 
       - name: Add selector assets and translations
         run: |
@@ -190,7 +191,7 @@ jobs:
           rm -rf m5/src/main/resources/data/eldenworld/skill_trees
           rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
 
-      - name: Build M6.2.1 FIXED candidate
+      - name: Build M6.2.2 RESTORED candidate
         working-directory: m5
         run: gradle build --stacktrace
 
@@ -204,34 +205,36 @@ jobs:
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/balance/WorldScalingEvents.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationEventsV2.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationSpellEventsV2.class'
-          cp "$JAR" "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.1-FIXED.jar"
+          cp "$JAR" "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.2-RESTORED.jar"
           mkdir -p "$GITHUB_WORKSPACE/dist/full"
-          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.1-FIXED.jar" "$GITHUB_WORKSPACE/dist/full/"
-          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Passive-Tree-M6.2.1-FIXED.zip" "$GITHUB_WORKSPACE/dist/full/"
-          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Mob-Scaling-M6.2.1-FIXED.zip" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.2-RESTORED.jar" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip" "$GITHUB_WORKSPACE/dist/full/"
           cat > "$GITHUB_WORKSPACE/dist/full/README.txt" <<'EOF'
-          EldenWorld M6.2.1 FIXED candidate
+          EldenWorld M6.2.2 RESTORED candidate
           Minecraft 1.20.1 Forge
 
-          1) Put EldenWorld-Core-M6.2.1-FIXED.jar into mods on server and client where required by your current EldenWorld setup.
-          2) Put EldenWorld-Passive-Tree-M6.2.1-FIXED.zip into the world's datapacks folder.
-          3) Put EldenWorld-Mob-Scaling-M6.2.1-FIXED.zip into the world's datapacks folder.
+          1) Put EldenWorld-Core-M6.2.2-RESTORED.jar into mods on server and client where required by your current EldenWorld setup.
+          2) Put EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip into the world's datapacks folder.
+          3) Put EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip into the world's datapacks folder.
           4) Remove older EldenWorld Core / Passive Tree / Mob Scaling M6.x copies to avoid duplicate data.
 
-          World Tier follows the average character level of online non-spectator players (max 150).
-          It updates once a second, including when a player leaves. No player online means Tier 0.
+          World Tier stores the highest character level ever recorded in this world (max 150).
+          It updates once a second and never falls when players leave or the server restarts.
+          Tier thresholds: 0, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150.
+          Existing M6.2 world progression data is preserved.
           Treasure Hunter's base merchant discount is 30%, with a minimum cost of 1.
           Mob Scaling entity tags (exclude, include_hostiles, elites, standard_bosses,
           benchmark_bosses) are editable under data/eldenworld_scaling/tags/entity_types/.
           EOF
-          (cd "$GITHUB_WORKSPACE/dist/full" && zip -qr ../EldenWorld-M6.2.1-FIXED.zip .)
+          (cd "$GITHUB_WORKSPACE/dist/full" && zip -qr ../EldenWorld-M6.2.2-RESTORED.zip .)
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6.2.1-FIXED-Candidate
+          name: EldenWorld-M6.2.2-RESTORED-Candidate
           path: |
-            dist/EldenWorld-Core-M6.2.1-FIXED.jar
-            dist/EldenWorld-Passive-Tree-M6.2.1-FIXED.zip
-            dist/EldenWorld-Mob-Scaling-M6.2.1-FIXED.zip
-            dist/EldenWorld-M6.2.1-FIXED.zip
+            dist/EldenWorld-Core-M6.2.2-RESTORED.jar
+            dist/EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip
+            dist/EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip
+            dist/EldenWorld-M6.2.2-RESTORED.zip
           if-no-files-found: error

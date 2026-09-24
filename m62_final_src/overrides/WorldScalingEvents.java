@@ -20,6 +20,7 @@ import net.minecraft.world.entity.ai.attributes.*;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -55,6 +56,7 @@ public final class WorldScalingEvents {
     private static final String NBT_ANTIHEAL_UNTIL = "EldenWorldM62AntiHealUntil";
     private static final String NBT_ANTIHEAL_PCT = "EldenWorldM62AntiHealPct";
     private static final String CTRL_ROOT = "EldenWorldM62Control";
+    private static final String WORLD_DATA_NAME = "eldenworld_m62_world_progress";
 
     private static int CURRENT_TIER = 0;
     private static int CURRENT_WORLD_LEVEL = 0;
@@ -80,21 +82,24 @@ public final class WorldScalingEvents {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        // Average the levels of online non-spectator players once per second.
-        // The tier can decrease when a high-level player leaves the server.
+        // Record the highest player level ever seen in this world once per second.
+        // Players leaving cannot lower the saved world tier.
         if ((++SERVER_TICKS % 20L) != 0L) return;
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
-        int total = 0;
-        int count = 0;
+        WorldProgressData data = progress(server);
+        int observedMax = data.maxLevelReached;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (player.isSpectator() || player.isRemoved()) continue;
             try {
-                total += Math.max(0, Math.min(150, RequirementChecker.pstLevel(player)));
-                count++;
+                observedMax = Math.max(observedMax, Math.max(0, Math.min(150, RequirementChecker.pstLevel(player))));
             } catch (RuntimeException ignored) {}
         }
-        CURRENT_WORLD_LEVEL = count == 0 ? 0 : Math.min(150, total / count);
+        if (observedMax > data.maxLevelReached) {
+            data.maxLevelReached = observedMax;
+            data.setDirty();
+        }
+        CURRENT_WORLD_LEVEL = data.maxLevelReached;
         int next = CONFIG.tierForLevel(CURRENT_WORLD_LEVEL);
         if (next != CURRENT_TIER) {
             CURRENT_TIER = next;
@@ -106,6 +111,12 @@ public final class WorldScalingEvents {
     public static void onJoin(EntityJoinLevelEvent event) {
         if (!(event.getLevel() instanceof ServerLevel) || !(event.getEntity() instanceof LivingEntity living)) return;
         if (!isScalable(living)) return;
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null) {
+            WorldProgressData data = progress(server);
+            CURRENT_WORLD_LEVEL = data.maxLevelReached;
+            CURRENT_TIER = CONFIG.tierForLevel(CURRENT_WORLD_LEVEL);
+        }
         applyScaling(living, CURRENT_TIER, !living.getPersistentData().contains(NBT_TIER));
     }
 
@@ -191,6 +202,31 @@ public final class WorldScalingEvents {
         return p.contains("stun") || p.contains("frozen") || p.contains("freeze") || p.contains("snare")
                 || p.contains("paral") || p.contains("incapac") || p.contains("strangle") || p.contains("rooted")
                 || p.contains("gloam_grasp") || p.contains("psychic_control");
+    }
+
+    private static WorldProgressData progress(MinecraftServer server) {
+        return server.overworld().getDataStorage().computeIfAbsent(
+                WorldProgressData::load, WorldProgressData::new, WORLD_DATA_NAME);
+    }
+
+    private static final class WorldProgressData extends SavedData {
+        private int maxLevelReached;
+
+        private WorldProgressData() {
+            this.maxLevelReached = 0;
+        }
+
+        private static WorldProgressData load(CompoundTag tag) {
+            WorldProgressData data = new WorldProgressData();
+            data.maxLevelReached = Math.max(0, Math.min(150, tag.getInt("MaxLevelReached")));
+            return data;
+        }
+
+        @Override
+        public CompoundTag save(CompoundTag tag) {
+            tag.putInt("MaxLevelReached", Math.max(0, Math.min(150, maxLevelReached)));
+            return tag;
+        }
     }
 
     public static int currentWorldLevel() {

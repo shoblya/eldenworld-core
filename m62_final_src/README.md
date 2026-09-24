@@ -6,7 +6,7 @@ This directory is generated once from the packed RC source so M6.2 FINAL can be 
 - overrides/ = decompressed Java overrides from m62_tools.
 - The Passive Skill Tree topology is not to be redesigned for M6.2 FINAL.
 
-## M6.2.1 correction build
+## M6.2.2 restored progression build
 
 - Correct all 378 internal `required_skills` references to use `eldenworld:`.
 - Preserve 18 subclass roots, 54 specializations, 54 masteries and the existing
@@ -14,9 +14,9 @@ This directory is generated once from the packed RC source so M6.2 FINAL can be 
   is added to internal skills.
 - Generate a distinct 16×16 class/attribute/branch icon for each of 396 nodes.
   These textures ship inside the Core JAR, which the client must load for icons.
-- World Tier is now the integer average character level of online
-  non-spectator players, capped at 150. It updates every second and can fall.
-  The former persistent maximum saved by M6.2 is ignored.
+- World Tier stores the highest character level ever observed in a world,
+  capped at 150. It updates every second, never drops when players leave,
+  and reads the original M6.2 persistent world record after a server restart.
 - Preserve a mob's current health fraction on tier changes and chunk reloads.
 - Include configurable entity tags for mob classification; known registry IDs
   can be added to the Mob Scaling datapack without recompiling Core.

@@ -165,7 +165,7 @@
     "branch": "Revenant",
     "profile": "survival",
     "specialization": "После срабатывания root Second Wind получает Regeneration II на 6 сек. и +20% урона на 8 сек.",
-    "mastery": "После Second Wind дополнительно Vigor II +10% lifesteal на 8 сек. Цена после окна: Weakness II на 12 сек. + Grievous I на 20 сек.",
+    "mastery": "После Second Wind дополнительно Vigor II +10% lifesteal на 8 сек. Цена: после окна Weakness II на 12 сек. + Grievous I на 20 сек.",
     "downside": []
   },
   {
@@ -336,7 +336,7 @@
     "branch": "Overcaster",
     "profile": "mana",
     "specialization": "Iron's spells получают +1 spell level, но стоят на 25% больше Mana.",
-    "mastery": "Получают +2 spell levels и стоят на 45% больше Mana; после каждого такого cast Soul Burn I на 3 сек. Цена встроена в каждый cast.",
+    "mastery": "Получают +2 spell levels и стоят на 45% больше Mana; после каждого такого cast Soul Burn I на 3 сек. Цена: +45% Mana Cost на каждый Mastery-cast и Soul Burn I на 3 сек.",
     "downside": []
   },
   {
@@ -367,7 +367,7 @@
     "branch": "Technomancer",
     "profile": "mage",
     "specialization": "Spell-cast даёт Software I на 5 сек.; physical hit даёт Hardware I на 5 сек. Если активны оба — Rewired I на 5 сек.",
-    "mastery": "Rewired превращается в Overcharged на 6 сек.: +20% Spell Power +15% Armor. Цена после окончания: -20% Spell Power + Slowed I на 5 сек.",
+    "mastery": "Rewired превращается в Overcharged на 6 сек.: +20% Spell Power +15% Armor. Цена: после окончания Overcharged -20% Spell Power + Slowed I на 5 сек.",
     "downside": []
   },
   {
@@ -436,7 +436,7 @@
     "branch": "Geomancer",
     "profile": "mage",
     "specialization": "Ore break даёт Earth Charge на 10 сек., максимум 5. Каждый Charge: +4% Geo/Earth Spell Power.",
-    "mastery": "При 5 Earth Charges следующий Geo spell/heavy hit расходует их, получает +35% damage и накладывает Erode I на 5 сек. Цена после расхода: Slowness I на 5 сек.",
+    "mastery": "При 5 Earth Charges следующий Geo spell/heavy hit расходует их, получает +35% damage и накладывает Erode I на 5 сек. Цена: после расхода Charges Slowness I на 5 сек.",
     "downside": []
   },
   {
@@ -460,7 +460,7 @@
     "branch": "Feastmaster",
     "profile": "adventurer",
     "specialization": "3 разных собственных блюда за 60 сек. дают Feast на 120 сек.: +10% Max HP +10% получаемого лечения.",
-    "mastery": "4 разных блюда дают Feast и союзникам в 8 блоках: +10% damage +10% Move Speed на 90 сек. Цена после окончания Feast: Weakness I на 20 сек.",
+    "mastery": "4 разных блюда дают Feast и союзникам в 8 блоках: +10% damage +10% Move Speed на 90 сек. Цена: после окончания Feast Weakness I на 20 сек.",
     "downside": []
   },
   {
@@ -537,7 +537,7 @@
     "branch": "Last Stand",
     "profile": "survival",
     "specialization": "Ниже 25% HP получает Fortify I + Vigor I на 6 сек. Перезарядка: 45 сек.",
-    "mastery": "Fortify II + Vigor II на 8 сек.; раз в 120 сек. lethal hit во время окна переводится в Lingering Strain на 8 сек. Цена после окна: Grievous II на 20 сек.",
+    "mastery": "Fortify II + Vigor II на 8 сек.; раз в 120 сек. lethal hit во время окна переводится в Lingering Strain на 8 сек. Цена: после окна Grievous II на 20 сек.",
     "downside": []
   },
   {

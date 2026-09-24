@@ -1,0 +1,138 @@
+name: Build EldenWorld M6.2 FINAL
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ m6.2-final-build ]
+    paths:
+      - 'm62_final_src/**'
+      - 'build.gradle'
+      - '.github/workflows/build-m62-final.yml'
+      - 'ci/m616/**'
+      - 'ci/m613_client/**'
+      - 'source_parts/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      - name: Reconstruct M6.1.7 source base
+        run: |
+          set -euo pipefail
+          cat source_parts/m3_*.b64 > m3.b64
+          base64 -d m3.b64 > m3.zip
+          unzip -q m3.zip -d m5
+
+      - name: Apply M6.2 FINAL build dependencies and version
+        run: |
+          set -euo pipefail
+          cp build.gradle m5/build.gradle
+          python3 - <<'PY'
+          from pathlib import Path
+          r=Path('m5')
+          p=r/'src/main/java/com/eldenworld/core/abilities/AbilityUtil.java'
+          s=p.read_text()
+          s=s.replace(
+              '    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        return RequirementChecker.hasSkill(player, skillId);\n    }',
+              '    public static boolean has(ServerPlayer player, ResourceLocation skillId) {\n        if (player == null || player.isRemoved()) return false;\n        try { return RequirementChecker.hasSkill(player, skillId); } catch (NullPointerException ignored) { return false; }\n    }'
+          )
+          p.write_text(s)
+          p=r/'gradle.properties'
+          s=p.read_text()
+          import re
+          s=re.sub(r'mod_version=.*', 'mod_version=0.6.2-m6.2-final', s)
+          p.write_text(s)
+          PY
+
+      - name: Apply M6.2 FINAL Core sources
+        run: |
+          set -euo pipefail
+          mkdir -p m5/src/main/java/com/eldenworld/core/specialization m5/src/main/java/com/eldenworld/core/balance
+          cp m62_final_src/current/FinalSpecializationEventsV2.java m62_final_src/current/FinalSpecializationSpellEventsV2.java m5/src/main/java/com/eldenworld/core/specialization/
+          cp ci/m616/KeystoneLimit.java m5/src/main/java/com/eldenworld/core/abilities/
+          cp ci/m616/LearnSkillMessageMixin.java m5/src/main/java/com/eldenworld/core/mixin/
+          cp m62_final_src/overrides/KeystoneAbilityEvents.java m5/src/main/java/com/eldenworld/core/abilities/KeystoneAbilityEvents.java
+          cp m62_final_src/overrides/IronsKeystoneEvents.java m5/src/main/java/com/eldenworld/core/abilities/IronsKeystoneEvents.java
+          cp m62_final_src/overrides/WorldScalingEvents.java m5/src/main/java/com/eldenworld/core/balance/WorldScalingEvents.java
+          python3 m62_final_src/current/generate_m61_trees.py m5 m62_final_src/current/m6_specializations.json
+
+      - name: Validate generated specialization trees
+        run: |
+          set -euo pipefail
+          test $(find m5/src/main/resources/data/eldenworld/skills -name '*.json' | wc -l) -eq 396
+          test $(find m5/src/main/resources/data/eldenworld/skill_trees -name '*.json' | wc -l) -eq 18
+          test $(find m5/src/main/resources/data/eldenworld_core/skill_requirements -name '*.json' | wc -l) -eq 396
+          ! grep -R -E 'Thorned Guard|Vanguard|Runewarden|Archaeologist|Gem Hunter|Excavator Mastery|Smith Mastery|Temperer Mastery|Runesmith Mastery' m5/src/main/resources/data/eldenworld/skills
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          req=Path('m5/src/main/resources/data/eldenworld_core/skill_requirements')
+          data=[json.loads(p.read_text()) for p in req.glob('*.json')]
+          roots=[x for x in data if x['skill'].endswith('/root')]
+          inner=[x for x in data if not x['skill'].endswith('/root')]
+          assert len(roots)==18
+          assert all(x['min_pst_level']==40 for x in roots)
+          assert all(x['min_pst_level']==0 for x in inner)
+          assert len({x['skill'] for x in data})==396
+          print('requirements OK:',len(roots),'roots,',len(inner),'inner nodes')
+          PY
+
+      - name: Package Passive Tree datapack
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist/passive/data/eldenworld dist/passive/data/eldenworld_core
+          cp -r m5/src/main/resources/data/eldenworld/skills dist/passive/data/eldenworld/
+          cp -r m5/src/main/resources/data/eldenworld/skill_trees dist/passive/data/eldenworld/
+          cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements dist/passive/data/eldenworld_core/
+          cat > dist/passive/pack.mcmeta <<'EOF'
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.2 FINAL Passive Skill Tree"}}
+          EOF
+          (cd dist/passive && zip -qr ../EldenWorld-Passive-Tree-M6.2-FINAL.zip .)
+
+      - name: Add selector assets and translations
+        run: |
+          set -euo pipefail
+          mkdir -p m5/src/main/java/com/eldenworld/core/client
+          cp ci/m613_client/EldenWorldSkillTreeSelectionScreen.java m5/src/main/java/com/eldenworld/core/client/
+          base64 -d ci/m613_client/ui_assets.tar.gz.b64 > /tmp/m613_ui_assets.tar.gz
+          tar -xzf /tmp/m613_ui_assets.tar.gz -C m5/src/main/resources
+
+      - name: Prepare code-only Core JAR
+        run: |
+          rm -rf m5/src/main/resources/data/eldenworld/skills
+          rm -rf m5/src/main/resources/data/eldenworld/skill_trees
+          rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
+
+      - name: Build M6.2 FINAL candidate
+        working-directory: m5
+        run: gradle build --stacktrace
+
+      - name: Validate Core JAR
+        run: |
+          set -euo pipefail
+          JAR=$(find m5/build/libs -name '*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -1)
+          test -n "$JAR"
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/abilities/KeystoneAbilityEvents.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/abilities/IronsKeystoneEvents.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/balance/WorldScalingEvents.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationEventsV2.class'
+          unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationSpellEventsV2.class'
+          cp "$JAR" "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2-FINAL.jar"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EldenWorld-M6.2-FINAL-Candidate
+          path: |
+            dist/EldenWorld-Core-M6.2-FINAL.jar
+            dist/EldenWorld-Passive-Tree-M6.2-FINAL.zip
+          if-no-files-found: error

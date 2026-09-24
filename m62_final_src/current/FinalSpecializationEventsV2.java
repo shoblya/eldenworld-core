@@ -78,6 +78,7 @@ public final class FinalSpecializationEventsV2 {
     private static final Map<UUID,LinkedHashSet<String>> FEAST_ITEMS=new HashMap<>();
     private static final Map<UUID,Long> FEAST_START=new HashMap<>();
     private static final Map<UUID,Map<ResourceLocation,Integer>> BREWER_NEGATIVE_SEEN=new HashMap<>();
+    private static final Map<UUID,Float> CHEF_SATURATION_BEFORE=new HashMap<>();
 
     static {
         registerCombatRollHook();
@@ -300,14 +301,6 @@ public final class FinalSpecializationEventsV2 {
                 FinalSpecializationSpellEventsV2.hardwareHit(a);
             }
 
-            // Occult Mastery finisher: first occult damage during the burst applies Soul Burn.
-            if(h(a,"archmage/occultist/specialization")
-                    && n<=AbilityState.getLong(a,OCCULT_BURST)
-                    && isOccultDamage(e.getSource())){
-                effect(t,"irons_spellbooks:soul_burn",5,1);
-                AbilityState.setLong(a,OCCULT_BURST,0L);
-            }
-
             // RANGER
             if(pr&&h(a,"keen_instinct/marksman/specialization")&&AbilityState.getInt(a,MARKSMAN_STILL)>=40&&cd(a,"m62_marksman",160L)){
                 x*=m(a,"keen_instinct/marksman")?2.00f:1.25f;AbilityState.setInt(a,MARKSMAN_STILL,0);
@@ -405,7 +398,9 @@ public final class FinalSpecializationEventsV2 {
                 effectPath(d,"aegis",4,0);AbilityState.setLong(d,STONE_UNTIL,n+80L);AbilityState.setLong(d,STONE_RETALIATE,n+80L);
             }
             if(h(d,"unyielding/spellguard/specialization")&&AbilityUtil.isMagicLike(e.getSource())){
-                String school=damageType(e.getSource());
+                String exact=n<=AbilityState.getLong(d,"m62_exact_spell_school_until")
+                        ?AbilityState.getString(d,"m62_exact_spell_school"):"";
+                String school=!exact.isEmpty()?exact:damageType(e.getSource());
                 String prev=AbilityState.getString(d,SPELLGUARD_SCHOOL);
                 if(school.equals(prev)&&n<=AbilityState.getLong(d,SPELLGUARD_UNTIL))x*=m(d,"unyielding/spellguard")?.65f:.80f;
                 AbilityState.setString(d,SPELLGUARD_SCHOOL,school);AbilityState.setLong(d,SPELLGUARD_UNTIL,n+(m(d,"unyielding/spellguard")?160L:120L));
@@ -573,13 +568,28 @@ public final class FinalSpecializationEventsV2 {
     }
 
     @SubscribeEvent
+    public static void startItem(LivingEntityUseItemEvent.Start e){
+        if(!(e.getEntity() instanceof ServerPlayer p))return;
+        ItemStack used=e.getItem();
+        if(used.isEdible()&&ownedCook(p,used)&&h(p,"prospector/chef/specialization")){
+            CHEF_SATURATION_BEFORE.put(p.getUUID(),p.getFoodData().getSaturationLevel());
+        }
+    }
+
+    @SubscribeEvent
     public static void finishItem(LivingEntityUseItemEvent.Finish e){
         if(!(e.getEntity() instanceof ServerPlayer p))return;ItemStack used=e.getItem();
         if(!ownedCook(p,used))return;long n=now(p);
 
         if(used.isEdible()){
             if(h(p,"prospector/chef/specialization")){
-                p.getFoodData().eat(1,.15f);
+                Float before=CHEF_SATURATION_BEFORE.remove(p.getUUID());
+                if(before!=null){
+                    float current=p.getFoodData().getSaturationLevel();
+                    float gained=Math.max(0f,current-before);
+                    p.getFoodData().setSaturation(Math.min(p.getFoodData().getFoodLevel(),current+gained*.15f));
+                }
+                p.getFoodData().eat(1,0f);
                 if(m(p,"prospector/chef")&&cd(p,"m62_chef",1200L)){effect(p,"irons_spellbooks:vigor",45,0);vanilla(p,MobEffects.REGENERATION,8,0);AbilityState.setLong(p,"m62_chef_slow",n+160L);}
             }
             if(h(p,"prospector/feastmaster/specialization"))registerFeastItem(p,used,n);
@@ -711,7 +721,7 @@ public final class FinalSpecializationEventsV2 {
         setAttr(p,"irons_spellbooks:cooldown_reduction","weave_burst_cdr",weaveBurst?.40:0);
 
         // Occult finisher and Geomancer burst cleanup.
-        setOccultSchoolPower(p,"occult_burst",n<=AbilityState.getLong(p,OCCULT_BURST)?.30:0);
+        setOccultSchoolPower(p,"occult_burst",0);
         setAttr(p,"irons_spellbooks:spell_power","geo_burst",n<=AbilityState.getLong(p,"m62_geo_burst_until")?.35:0);
 
         // Aegis specialization: use the real registered Iron's/addon school when available.
@@ -855,11 +865,6 @@ public final class FinalSpecializationEventsV2 {
         if(z.contains("eldritch"))return"eldritch";
         if(z.contains("abyss"))return"abyssal";
         return"";
-    }
-
-    private static boolean isOccultDamage(net.minecraft.world.damagesource.DamageSource source){
-        String z=damageType(source).toLowerCase(Locale.ROOT);
-        return z.contains("blood")||z.contains("ender")||z.contains("eldritch")||z.contains("abyss");
     }
 
     private static double manaRatio(ServerPlayer p){

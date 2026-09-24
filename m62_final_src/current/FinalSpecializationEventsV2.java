@@ -420,6 +420,17 @@ public final class FinalSpecializationEventsV2 {
 
             e.setAmount(x);
         }
+
+        // Beastmaster works through Minecraft's standard OwnableEntity contract, so
+        // vanilla pets and compatible pet mods do not need a hard dependency.
+        if(src instanceof OwnableEntity pet && pet.getOwner() instanceof ServerPlayer owner
+                && h(owner,"pathfinder/beastmaster/specialization")){
+            e.setAmount(e.getAmount()*(m(owner,"pathfinder/beastmaster")?1.45f:1.25f));
+        }
+        if(e.getEntity() instanceof OwnableEntity pet && pet.getOwner() instanceof ServerPlayer owner
+                && h(owner,"pathfinder/beastmaster/specialization")){
+            e.setAmount(e.getAmount()*(m(owner,"pathfinder/beastmaster")?.75f:.85f));
+        }
     }
 
     @SubscribeEvent

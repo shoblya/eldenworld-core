@@ -74,6 +74,7 @@ public final class FinalSpecializationEventsV2 {
     private static final String DEATH_MARK_OWNER="EldenWorldM62DeathMarkOwner", DEATH_MARK_UNTIL="EldenWorldM62DeathMarkUntil";
 
     private static final Map<UUID,double[]> LAST_POS=new HashMap<>();
+    private static final Map<UUID,double[]> MIRAGE_REPOSITION=new HashMap<>();
     private static final Map<UUID,LinkedHashSet<String>> FEAST_ITEMS=new HashMap<>();
     private static final Map<UUID,Long> FEAST_START=new HashMap<>();
     private static final Map<UUID,Map<ResourceLocation,Integer>> BREWER_NEGATIVE_SEEN=new HashMap<>();
@@ -215,6 +216,11 @@ public final class FinalSpecializationEventsV2 {
                     effect(t,"irons_spellbooks:soul_burn",5,1);
                 }
             }
+            if(h(a,"ghost/phantom/specialization")&&n<=AbilityState.getLong(a,PHANTOM_WINDOW)){
+                x*=m(a,"ghost/phantom")?1.30f:1.15f;
+                AbilityState.setLong(a,PHANTOM_WINDOW,0L);
+                if(m(a,"ghost/phantom"))effect(a,"irons_spellbooks:evasion",3,0);
+            }
 
             if(h(a,"opportunist/duelist/specialization")&&!pr&&a.getOffhandItem().isEmpty()&&oneHanded(w)){
                 int tempo=AbilityState.getInt(a,TEMPO);
@@ -350,10 +356,31 @@ public final class FinalSpecializationEventsV2 {
                 AbilityUtil.tryShadowstep(d,m(d,"shadowstep/riftwalker")?5.0:3.5);
                 if(m(d,"shadowstep/riftwalker")){effectPath(d,"spectral_blink",3,0);AbilityState.setLong(d,"m62_rift_expose",n+80L);}
             }
+            if(m(d,"shadowstep/mirage")
+                    && n>=AbilityState.getLong(d,"m62_mirage_expose_start")
+                    && n<=AbilityState.getLong(d,"m62_mirage_expose_until")){
+                x*=1.20f;
+            }
             if(h(d,"shadowstep/mirage/specialization")&&cd(d,"m62_mirage",200L)&&d.getRandom().nextFloat()<(m(d,"shadowstep/mirage")?.40f:.30f)){
-                x*=m(d,"shadowstep/mirage")?.70f:.80f;spawnDecoys(d,m(d,"shadowstep/mirage")?2:1,m(d,"shadowstep/mirage")?100:80);
-                setAttr(d,"minecraft:generic.movement_speed","mirage_move",.10);AbilityState.setLong(d,"m62_mirage_move",n+40L);
-                if(m(d,"shadowstep/mirage"))AbilityState.setLong(d,"m62_mirage_expose",n+(m(d,"shadowstep/mirage")?160L:0L));
+                boolean mm=m(d,"shadowstep/mirage");
+                x*=mm?.70f:.80f;
+                spawnDecoys(d,mm?2:1,mm?100:80);
+                setAttr(d,"minecraft:generic.movement_speed","mirage_move",.10);
+                AbilityState.setLong(d,"m62_mirage_move",n+40L);
+                if(mm){
+                    if(attacker instanceof LivingEntity le){
+                        effectPath(le,"blackout",2,1);
+                        effectPath(le,"insanity",3,2);
+                    }
+                    var look=d.getLookAngle();
+                    double sx=-look.z,sz=look.x;
+                    double len=Math.sqrt(sx*sx+sz*sz);
+                    if(len<1.0e-4){sx=1;sz=0;}else{sx/=len;sz/=len;}
+                    double sign=d.getRandom().nextBoolean()?1.0:-1.0;
+                    MIRAGE_REPOSITION.put(d.getUUID(),new double[]{n+10L,d.getX()+sx*2.0*sign,d.getY(),d.getZ()+sz*2.0*sign});
+                    AbilityState.setLong(d,"m62_mirage_expose_start",n+100L);
+                    AbilityState.setLong(d,"m62_mirage_expose_until",n+160L);
+                }
             }
             if(h(d,"opportunist/duelist/specialization")&&attacker!=null){AbilityState.setInt(d,TEMPO,0);AbilityState.setLong(d,DUEL_EXPOSE,n+60L);}
 
@@ -539,6 +566,28 @@ public final class FinalSpecializationEventsV2 {
         if(old!=null&&dist2(old,cur)<.01)AbilityState.setInt(p,MARKSMAN_STILL,Math.min(80,AbilityState.getInt(p,MARKSMAN_STILL)+10));else AbilityState.setInt(p,MARKSMAN_STILL,0);
         LAST_POS.put(p.getUUID(),cur);
 
+        boolean evasionNow=hasEffectPath(p,"evasion");
+        int evasionSeen=AbilityState.getInt(p,"m62_evasion_seen");
+        if(evasionNow&&evasionSeen==0){
+            if(h(p,"ghost/phantom/specialization")&&cd(p,"m62_phantom_roll",160L)){
+                effect(p,"irons_spellbooks:true_invisibility",m(p,"ghost/phantom")?3:2,0);
+                AbilityState.setLong(p,PHANTOM_WINDOW,n+60L);
+            }
+            if(h(p,"opportunist/duelist/specialization")){
+                AbilityState.setLong(p,DUEL_ROLL,n+60L);
+            }
+        }
+        AbilityState.setInt(p,"m62_evasion_seen",evasionNow?1:0);
+
+        double[] miragePos=MIRAGE_REPOSITION.get(p.getUUID());
+        if(miragePos!=null&&n>=(long)miragePos[0]){
+            double dx=miragePos[1]-p.getX(),dy=miragePos[2]-p.getY(),dz=miragePos[3]-p.getZ();
+            if(p.level().noCollision(p,p.getBoundingBox().move(dx,dy,dz))){
+                p.teleportTo(miragePos[1],miragePos[2],miragePos[3]);
+            }
+            MIRAGE_REPOSITION.remove(p.getUUID());
+        }
+
         if(n>AbilityState.getLong(p,SPECTER_SOUL_UNTIL))AbilityState.setInt(p,SPECTER_SOUL,0);
         if(n>AbilityState.getLong(p,OCCULT_SOUL_UNTIL))AbilityState.setInt(p,OCCULT_SOUL,0);
         if(n>AbilityState.getLong(p,TEMPO_UNTIL))AbilityState.setInt(p,TEMPO,0);
@@ -716,8 +765,6 @@ public final class FinalSpecializationEventsV2 {
         // Timed mastery penalties/effects.
         setAttr(p,"minecraft:generic.movement_speed","chef_slow",n<=AbilityState.getLong(p,"m62_chef_slow")?-.15:0);
         tickBrewerNegativeDuration(p);
-        if(n>AbilityState.getLong(p,"m62_mirage_expose"))setAttr(p,"minecraft:generic.armor","mirage_expose",0);
-        else if(AbilityState.getLong(p,"m62_mirage_expose")>0)setAttr(p,"minecraft:generic.armor","mirage_expose",-.20);
     }
 
     private static boolean hasNearbyFeastAura(ServerPlayer target,long n){

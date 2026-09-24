@@ -16,7 +16,7 @@ public final class FinalSpecializationSpellEventsV2 {
     private FinalSpecializationSpellEventsV2() {}
 
     private static final String ELEMENT="m62_element", ELEMENT_COUNT="m62_element_count", ELEMENT_CHAIN="m62_element_chain";
-    private static final String ATTUNE_UNTIL="m62_attune_until", AVATAR_UNTIL="m62_avatar_until";
+    private static final String ATTUNE_SCHOOL="m62_attune_school", ATTUNE_UNTIL="m62_attune_until", AVATAR_SCHOOL="m62_avatar_school", AVATAR_UNTIL="m62_avatar_until";
     private static final String FLOW="m62_flow", FLOW_LAST="m62_flow_last", FLOW_PENALTY="m62_flow_penalty";
     private static final String WEAVE="m62_weave", WEAVE_LAST="m62_weave_last", WEAVE_SYSTEM="m62_weave_system", WEAVE_PENALTY="m62_weave_penalty";
     private static final String AEGIS_SCHOOL="m62_aegis_school", AEGIS_UNTIL="m62_aegis_until";
@@ -63,7 +63,9 @@ public final class FinalSpecializationSpellEventsV2 {
 
         if(FinalSpecializationEventsV2.has(p,"arcane_ward/aegis/specialization")&&FinalSpecializationEventsV2.mastery(p,"arcane_ward/aegis")){
             String ward=AbilityState.getString(p,AEGIS_SCHOOL);
-            if(!ward.isEmpty()&&ward.equals(elemental)&&n<=AbilityState.getLong(p,AEGIS_UNTIL)){
+            String castSchool=schoolKey(school,spell);
+            if(!ward.isEmpty()&&ward.equals(castSchool)&&n<=AbilityState.getLong(p,AEGIS_UNTIL)){
+                AbilityState.setString(p,"m62_aegis_burst_school",ward);
                 AbilityState.setLong(p,"m62_aegis_burst_until",n+40L);
                 AbilityState.setLong(p,AEGIS_UNTIL,0L);
             }
@@ -106,30 +108,52 @@ public final class FinalSpecializationSpellEventsV2 {
     }
 
     private static void handleElementalist(ServerPlayer p,String el,long n,SpellOnCastEvent e){
-        String old=AbilityState.getString(p,ELEMENT);
-        int count=(el.equals(old)&&n<=AbilityState.getLong(p,ELEMENT_CHAIN))?AbilityState.getInt(p,ELEMENT_COUNT)+1:1;
-        count=Math.min(5,count);
-        AbilityState.setString(p,ELEMENT,el);AbilityState.setInt(p,ELEMENT_COUNT,count);AbilityState.setLong(p,ELEMENT_CHAIN,n+160L);
+        boolean avatarActive=n<=AbilityState.getLong(p,AVATAR_UNTIL);
+        String avatarSchool=AbilityState.getString(p,AVATAR_SCHOOL);
 
-        if(count>=3)AbilityState.setLong(p,ATTUNE_UNTIL,n+200L);
-        if(FinalSpecializationEventsV2.mastery(p,"archmage/elementalist")&&count>=5)AbilityState.setLong(p,AVATAR_UNTIL,n+160L);
+        // While Avatar is active its school is locked; off-school casts pay the downside
+        // instead of silently moving the Avatar to another school.
+        if(avatarActive&&!avatarSchool.isEmpty()){
+            FinalSpecializationEventsV2.clearElementalPowers(p,"element_attune");
+            FinalSpecializationEventsV2.clearElementalPowers(p,"element_avatar");
+            for(String x:new String[]{"fire","ice","lightning","wind","earth","water","nature"}){
+                FinalSpecializationEventsV2.setElementSchoolPower(p,x,"element_avatar_"+x,x.equals(avatarSchool)?.35:-.25);
+            }
+            e.setManaCost((int)Math.ceil(e.getManaCost()*(el.equals(avatarSchool)?.80:1.20)));
+            return;
+        }
+
+        String old=AbilityState.getString(p,ELEMENT);
+        int count=(el.equals(old)&&n<=AbilityState.getLong(p,ELEMENT_CHAIN))
+                ?AbilityState.getInt(p,ELEMENT_COUNT)+1:1;
+        count=Math.min(5,count);
+        AbilityState.setString(p,ELEMENT,el);
+        AbilityState.setInt(p,ELEMENT_COUNT,count);
+        AbilityState.setLong(p,ELEMENT_CHAIN,n+160L);
+
+        if(count>=3){
+            AbilityState.setString(p,ATTUNE_SCHOOL,el);
+            AbilityState.setLong(p,ATTUNE_UNTIL,n+200L);
+        }
+        if(FinalSpecializationEventsV2.mastery(p,"archmage/elementalist")&&count>=5){
+            AbilityState.setString(p,AVATAR_SCHOOL,el);
+            AbilityState.setLong(p,AVATAR_UNTIL,n+160L);
+        }
 
         FinalSpecializationEventsV2.clearElementalPowers(p,"element_attune");
         FinalSpecializationEventsV2.clearElementalPowers(p,"element_avatar");
 
-        if(n<=AbilityState.getLong(p,ATTUNE_UNTIL)){
-            FinalSpecializationEventsV2.setElementSchoolPower(p,el,"element_attune_"+el,.15);
+        String attuned=AbilityState.getString(p,ATTUNE_SCHOOL);
+        if(!attuned.isEmpty()&&n<=AbilityState.getLong(p,ATTUNE_UNTIL)){
+            FinalSpecializationEventsV2.setElementSchoolPower(p,attuned,"element_attune_"+attuned,.15);
         }
+
         if(n<=AbilityState.getLong(p,AVATAR_UNTIL)){
+            String av=AbilityState.getString(p,AVATAR_SCHOOL);
             for(String x:new String[]{"fire","ice","lightning","wind","earth","water","nature"}){
-                FinalSpecializationEventsV2.setElementSchoolPower(p,x,"element_avatar_"+x,x.equals(el)?.35:-.25);
+                FinalSpecializationEventsV2.setElementSchoolPower(p,x,"element_avatar_"+x,x.equals(av)?.35:-.25);
             }
             e.setManaCost((int)Math.ceil(e.getManaCost()*.80));
-        }else{
-            String active=AbilityState.getString(p,ELEMENT);
-            if(!active.isEmpty()&&!active.equals(el)&&FinalSpecializationEventsV2.time(p)<=AbilityState.getLong(p,AVATAR_UNTIL)){
-                e.setManaCost((int)Math.ceil(e.getManaCost()*1.20));
-            }
         }
     }
 
@@ -137,6 +161,7 @@ public final class FinalSpecializationSpellEventsV2 {
         if(FinalSpecializationEventsV2.mastery(p,"archmage/occultist")&&FinalSpecializationEventsV2.souls(p)>=3){
             FinalSpecializationEventsV2.clearSouls(p);
             FinalSpecializationEventsV2.setOccultBurst(p,40);
+            FinalSpecializationEventsV2.setOccultSchoolPower(p,"occult_burst",.30);
             p.setHealth(Math.max(1.0f,p.getHealth()-p.getMaxHealth()*.05f));
         }else FinalSpecializationEventsV2.gainSoul(p);
     }
@@ -181,6 +206,18 @@ public final class FinalSpecializationSpellEventsV2 {
         AbilityState.setLong(p,HARDWARE,n+100L);
         FinalSpecializationEventsV2.applyEffectPath(p,"hardware",5,0);
         combineTechnomancer(p,n);
+    }
+
+    static String schoolKey(String school,String spell){
+        String z=(school+" "+spell).toLowerCase(Locale.ROOT);
+        for(String x:new String[]{"fire","ice","lightning","wind","earth","geo","water","aqua","nature","holy","ender","blood","evocation","eldritch","abyssal"}){
+            if(z.contains(x)){
+                if(x.equals("geo"))return"earth";
+                if(x.equals("aqua"))return"water";
+                return x;
+            }
+        }
+        return"";
     }
 
     static String element(String school,String spell){

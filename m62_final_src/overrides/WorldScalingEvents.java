@@ -18,14 +18,15 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.*;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -43,6 +44,7 @@ public final class WorldScalingEvents {
 
     private static final ResourceLocation ARMOR_SHRED = new ResourceLocation("attributeslib", "armor_shred");
     private static final TagKey<EntityType<?>> EXCLUDE = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("eldenworld_scaling", "exclude"));
+    private static final TagKey<EntityType<?>> INCLUDE = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("eldenworld_scaling", "include_hostiles"));
     private static final TagKey<EntityType<?>> ELITE = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("eldenworld_scaling", "elites"));
     private static final TagKey<EntityType<?>> STANDARD_BOSS = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("eldenworld_scaling", "standard_bosses"));
     private static final TagKey<EntityType<?>> BENCHMARK_BOSS = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("eldenworld_scaling", "benchmark_bosses"));
@@ -54,7 +56,6 @@ public final class WorldScalingEvents {
     private static final String NBT_ANTIHEAL_PCT = "EldenWorldM62AntiHealPct";
     private static final String CTRL_ROOT = "EldenWorldM62Control";
 
-    private static final String WORLD_DATA_NAME = "eldenworld_m62_world_progress";
     private static int CURRENT_TIER = 0;
     private static int CURRENT_WORLD_LEVEL = 0;
     private static long SERVER_TICKS = 0;
@@ -70,28 +71,30 @@ public final class WorldScalingEvents {
     }
 
     @SubscribeEvent
+    public static void onServerStarting(ServerStartingEvent event) {
+        SERVER_TICKS = 0;
+        CURRENT_TIER = 0;
+        CURRENT_WORLD_LEVEL = 0;
+    }
+
+    @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        // Only scan connected players once per second. The result can only raise the
-        // persistent world record; logging out can never lower World Tier.
+        // Average the levels of online non-spectator players once per second.
+        // The tier can decrease when a high-level player leaves the server.
         if ((++SERVER_TICKS % 20L) != 0L) return;
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
-
-        WorldProgressData data = progress(server);
-        int observedMax = data.maxLevelReached;
+        int total = 0;
+        int count = 0;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (player.isSpectator() || player.isRemoved()) continue;
             try {
-                observedMax = Math.max(observedMax, Math.min(150, RequirementChecker.pstLevel(player)));
+                total += Math.max(0, Math.min(150, RequirementChecker.pstLevel(player)));
+                count++;
             } catch (RuntimeException ignored) {}
         }
-
-        if (observedMax > data.maxLevelReached) {
-            data.maxLevelReached = observedMax;
-            data.setDirty();
-        }
-        CURRENT_WORLD_LEVEL = data.maxLevelReached;
+        CURRENT_WORLD_LEVEL = count == 0 ? 0 : Math.min(150, total / count);
         int next = CONFIG.tierForLevel(CURRENT_WORLD_LEVEL);
         if (next != CURRENT_TIER) {
             CURRENT_TIER = next;
@@ -103,13 +106,7 @@ public final class WorldScalingEvents {
     public static void onJoin(EntityJoinLevelEvent event) {
         if (!(event.getLevel() instanceof ServerLevel) || !(event.getEntity() instanceof LivingEntity living)) return;
         if (!isScalable(living)) return;
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null) {
-            WorldProgressData data = progress(server);
-            CURRENT_WORLD_LEVEL = data.maxLevelReached;
-            CURRENT_TIER = CONFIG.tierForLevel(CURRENT_WORLD_LEVEL);
-        }
-        applyScaling(living, CURRENT_TIER, true);
+        applyScaling(living, CURRENT_TIER, !living.getPersistentData().contains(NBT_TIER));
     }
 
     @SubscribeEvent
@@ -196,35 +193,6 @@ public final class WorldScalingEvents {
                 || p.contains("gloam_grasp") || p.contains("psychic_control");
     }
 
-    private static WorldProgressData progress(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(
-                WorldProgressData::load, WorldProgressData::new, WORLD_DATA_NAME);
-    }
-
-    /**
-     * Persistent, irreversible EldenWorld progression.
-     * Stores the highest character level ever observed in this save.
-     */
-    private static final class WorldProgressData extends SavedData {
-        private int maxLevelReached;
-
-        private WorldProgressData() {
-            this.maxLevelReached = 0;
-        }
-
-        private static WorldProgressData load(CompoundTag tag) {
-            WorldProgressData data = new WorldProgressData();
-            data.maxLevelReached = Math.max(0, Math.min(150, tag.getInt("MaxLevelReached")));
-            return data;
-        }
-
-        @Override
-        public CompoundTag save(CompoundTag tag) {
-            tag.putInt("MaxLevelReached", Math.max(0, Math.min(150, maxLevelReached)));
-            return tag;
-        }
-    }
-
     public static int currentWorldLevel() {
         return CURRENT_WORLD_LEVEL;
     }
@@ -244,7 +212,7 @@ public final class WorldScalingEvents {
     private static boolean isScalable(LivingEntity living) {
         if (living instanceof Player || living.getType().is(EXCLUDE)) return false;
         if (living instanceof OwnableEntity owned && owned.getOwnerUUID() != null) return false;
-        return living instanceof Monster || living.getType().getCategory() == MobCategory.MONSTER;
+        return living instanceof Enemy || living instanceof Monster || living.getType().getCategory() == MobCategory.MONSTER || living.getType().is(INCLUDE);
     }
 
     private static void applyScaling(LivingEntity living, int tier, boolean spawned) {
@@ -259,11 +227,11 @@ public final class WorldScalingEvents {
         AttributeInstance attack = living.getAttribute(Attributes.ATTACK_DAMAGE);
         AttributeInstance armor = living.getAttribute(Attributes.ARMOR);
         AttributeInstance kb = living.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
-        remove(hp, HP_ID); remove(attack, OLD_DAMAGE_ID); remove(armor, ARMOR_ID); remove(kb, KB_ID);
-        AttributeInstance shred = attribute(living, ARMOR_SHRED); remove(shred, ARMOR_SHRED_ID);
-
+        // Save the old fraction before removing the previous HP modifier.
         float oldMax = living.getMaxHealth();
         float ratio = oldMax <= 0 ? 1.0f : living.getHealth() / oldMax;
+        remove(hp, HP_ID); remove(attack, OLD_DAMAGE_ID); remove(armor, ARMOR_ID); remove(kb, KB_ID);
+        AttributeInstance shred = attribute(living, ARMOR_SHRED); remove(shred, ARMOR_SHRED_ID);
         double hpMult = hpMultiplier(profile, tier);
         if (hp != null && hpMult > 1.0) hp.addPermanentModifier(new AttributeModifier(HP_ID, "EldenWorld M6.2 Tier HP", hpMult - 1.0, AttributeModifier.Operation.MULTIPLY_TOTAL));
 
@@ -331,6 +299,11 @@ public final class WorldScalingEvents {
                 try { CONFIG = ScalingConfig.from(el.getAsJsonObject()); }
                 catch (RuntimeException ex) { CONFIG = ScalingConfig.defaults(); }
             } else CONFIG = ScalingConfig.defaults();
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server != null) {
+                CURRENT_TIER = CONFIG.tierForLevel(CURRENT_WORLD_LEVEL);
+                rescaleLoaded(server);
+            }
         }
     }
 
@@ -377,9 +350,10 @@ public final class WorldScalingEvents {
                     arr(o,"boss_hp",d.bossHp,n),arr(o,"boss_damage",d.bossDamage,n),arr(o,"benchmark_hp",d.benchmarkHp,n),arr(o,"benchmark_damage",d.benchmarkDamage,n),
                     arr(o,"boss_armor",d.bossArmor,n),arr(o,"boss_armor_shred",d.bossArmorShred,n),arr(o,"boss_knockback_resist",d.bossKbResist,n),
                     arr(o,"boss_control_resist",d.bossControlResist,n),arr(o,"boss_antiheal",d.bossAntiHeal,n),arr(o,"boss_projectile_resist",d.bossProjectileResist,n),
-                    o.has("benchmark_extra_factor")?o.get("benchmark_extra_factor").getAsDouble():d.benchmarkExtraFactor);
+                    factor(o,d.benchmarkExtraFactor));
         }
-        static double[] arr(JsonObject o,String key,double[] fallback,int n){ if(!o.has(key))return fallback; JsonArray a=o.getAsJsonArray(key); if(a.size()!=n)throw new IllegalArgumentException(key); double[] r=new double[n]; for(int i=0;i<n;i++)r[i]=a.get(i).getAsDouble(); return r; }
-        static int[] intArray(JsonObject o,String key,int[] fallback){ if(!o.has(key))return fallback; JsonArray a=o.getAsJsonArray(key); int[] r=new int[a.size()]; for(int i=0;i<r.length;i++)r[i]=a.get(i).getAsInt(); return r; }
+        static double factor(JsonObject o,double fallback){ if(!o.has("benchmark_extra_factor"))return fallback; double value=o.get("benchmark_extra_factor").getAsDouble(); if(!Double.isFinite(value) || value<0 || value>1)throw new IllegalArgumentException("benchmark_extra_factor"); return value; }
+        static double[] arr(JsonObject o,String key,double[] fallback,int n){ if(!o.has(key))return fallback; JsonArray a=o.getAsJsonArray(key); if(a.size()!=n)throw new IllegalArgumentException(key); double[] r=new double[n]; for(int i=0;i<n;i++){r[i]=a.get(i).getAsDouble(); if(!Double.isFinite(r[i]) || r[i]<0)throw new IllegalArgumentException(key);} return r; }
+        static int[] intArray(JsonObject o,String key,int[] fallback){ if(!o.has(key))return fallback; JsonArray a=o.getAsJsonArray(key); if(a.size()!=fallback.length)throw new IllegalArgumentException(key); int[] r=new int[a.size()]; for(int i=0;i<r.length;i++){r[i]=a.get(i).getAsInt(); if(i==0 && r[i]!=0 || i>0 && r[i]<=r[i-1])throw new IllegalArgumentException(key);} return r; }
     }
 }

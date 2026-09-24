@@ -1,5 +1,6 @@
 from pathlib import Path
 import json, uuid, math, sys, shutil
+from node_icons import render_node_icon
 project=Path(sys.argv[1]) if len(sys.argv)>1 else Path('.')
 spec_path=Path(sys.argv[2]) if len(sys.argv)>2 else Path('ci/m6_specializations.json')
 rows=json.loads(spec_path.read_text())
@@ -61,8 +62,12 @@ profiles.update({
 
 def bonus(attr,amount,op,key):
  return {'type':'skilltree:attribute','attribute':attr,'id':str(uuid.uuid5(uuid.NAMESPACE_URL,'eldenworld:m62:'+key)),'name':'EldenWorld M6.2 stat','amount':amount,'operation':op,'player_multiplier':{'type':'skilltree:none'},'player_condition':{'type':'skilltree:none'}}
+generated_icons=[]
 def write_node(idp,title,x,y,start,connections,group,kind,branch=None,desc='',stat=None,extra_bonuses=None,root_key=None):
- ic=(root_icons.get(root_key,icons[group]) if branch is None else branch_icons.get(slug(branch),icons[group]))
+ # All nodes have their own, reproducibly generated, branch/attribute-aware icon.
+ ic='eldenworld:textures/icons/nodes/'+idp.replace('/','__')+'.png'
+ render_node_icon(root, idp, group, kind, branch, stat, len(generated_icons))
+ generated_icons.append(ic)
  bonuses=[]
  if stat:
   n,a,v,o,text=stat; bonuses=[bonus(a,v,o,idp)]
@@ -73,7 +78,7 @@ def write_node(idp,title,x,y,start,connections,group,kind,branch=None,desc='',st
  d={'id':'eldenworld:'+idp,'bonuses':bonuses,'directConnections':['eldenworld:'+c for c in connections],'longConnections':[],'oneWayConnections':[],'tags':[],'backgroundTexture':'skilltree:textures/icons/background/'+('keystone.png' if kind in ('start','specialization','big','mastery') else 'lesser.png'),'iconTexture':ic,'borderTexture':'skilltree:textures/tooltip/'+('keystone.png' if kind in ('start','specialization','big','mastery') else 'lesser.png'),'title':title,'titleColor':'','positionX':round(x,3),'positionY':round(y,3),'buttonSize':32 if kind in ('start','specialization','big','mastery') else 24,'isStartingPoint':start,'requirements':[],'description':[{'text':desc}]}
  (skills/(idp.replace('/','__')+'.json')).write_text(json.dumps(d,ensure_ascii=False,indent=2))
 def req(idp,lvl,parent,previous=None):
- needed=[parent]+(([previous] if previous else []))
+ needed=[parent]+((['eldenworld:'+previous] if previous else []))
  (reqs/(idp.replace('/','__')+'.json')).write_text(json.dumps({'skill':'eldenworld:'+idp,'min_pst_level':lvl,'required_skills':needed},indent=2))
 by_tree={k:[] for k in meta}
 for r in rows: by_tree[r['tree']].append(r)
@@ -82,7 +87,13 @@ for key,(disp,parent,group) in meta.items():
  branches=by_tree[key]; assert len(branches)==3
  rootid=f'{key}/root'; ids=['eldenworld:'+rootid]
  first=[f"{key}/{slug(r['branch'])}/stat_1" for r in branches]
- write_node(rootid,disp,0,0,True,first,group,'start',desc=f'{disp}: стартовая точка. Выберите одну из трёх специализаций. Внутренние ноды ограничены порядком ветки и стоимостью skill points, без отдельного level-gate.',root_key=key)
+ root_desc=(
+  'Treasure Hunter: +2 Luck, +8% опыта за мобов, руду и рыбалку; '
+  'скидка у торговцев 30% (цена не ниже 1); награда за новый биом.'
+  if key=='treasure_hunter' else
+  f'{disp}: стартовая точка. Выберите одну из трёх специализаций. Внутренние ноды ограничены порядком ветки и стоимостью skill points, без отдельного level-gate.'
+ )
+ write_node(rootid,disp,0,0,True,first,group,'start',desc=root_desc,root_key=key)
  req(rootid,40,parent)
  for bi,r in enumerate(branches):
   b=r['branch']; profile=profiles[r['profile']]; ang=2*math.pi*bi/3-math.pi/2; ux,uy=math.cos(ang),math.sin(ang)

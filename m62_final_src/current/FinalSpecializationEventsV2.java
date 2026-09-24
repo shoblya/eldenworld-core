@@ -47,7 +47,7 @@ public final class FinalSpecializationEventsV2 {
     private static final String PHANTOM_WINDOW="m62_phantom_window";
     private static final String DUEL_ROLL="m62_duel_roll", DUEL_EXPOSE="m62_duel_expose";
     private static final String GALE="m62_gale", SKIRMISH="m62_skirmish";
-    private static final String SOUL="m62_soul", SOUL_UNTIL="m62_soul_until", OCCULT_BURST="m62_occult_burst";
+    private static final String SPECTER_SOUL="m62_specter_soul", SPECTER_SOUL_UNTIL="m62_specter_soul_until";\n    private static final String OCCULT_SOUL="m62_occult_soul", OCCULT_SOUL_UNTIL="m62_occult_soul_until", OCCULT_BURST="m62_occult_burst";
     private static final String TEMPO="m62_tempo", TEMPO_UNTIL="m62_tempo_until";
     private static final String BLOOD="m62_blood", BLOOD_LAST="m62_blood_last", VAMP_UNTIL="m62_vamp_until";
     private static final String RESOLVE="m62_resolve", RESOLVE_UNTIL="m62_resolve_until";
@@ -146,7 +146,7 @@ public final class FinalSpecializationEventsV2 {
     private static void clearMark(LivingEntity target){CompoundTag t=markTag(target);t.remove(DEATH_MARK_OWNER);t.remove(DEATH_MARK_UNTIL);}
 
     private static int inc(ServerPlayer p,String key,int max){int n=Math.min(max,AbilityState.getInt(p,key)+1);AbilityState.setInt(p,key,n);return n;}
-    private static void addSoul(ServerPlayer p){inc(p,SOUL,3);AbilityState.setLong(p,SOUL_UNTIL,now(p)+160L);}
+    private static void addSpecterSoul(ServerPlayer p){inc(p,SPECTER_SOUL,3);AbilityState.setLong(p,SPECTER_SOUL_UNTIL,now(p)+160L);}\n    private static void addOccultSoul(ServerPlayer p){inc(p,OCCULT_SOUL,3);AbilityState.setLong(p,OCCULT_SOUL_UNTIL,now(p)+160L);}
     private static void addBlood(ServerPlayer p){
         long n=now(p);if(n-AbilityState.getLong(p,BLOOD_LAST)<20L)return;
         AbilityState.setLong(p,BLOOD_LAST,n);inc(p,BLOOD,5);
@@ -200,7 +200,7 @@ public final class FinalSpecializationEventsV2 {
                 if(trueInvisible(a)){x*=1.25f;mark(t,a,6);AbilityState.setString(a,"m62_assassin_target",t.getUUID().toString());AbilityState.setLong(a,"m62_assassin_until",n+120L);}
                 if(was&&t.getHealth()<=t.getMaxHealth()*.30f)x*=m(a,"ghost/assassin")?1.35f:1.15f;
             }
-            if(h(a,"ghost/specter/specialization")&&!pr&&scythe(w))addSoul(a);
+            if(h(a,"ghost/specter/specialization")&&!pr&&scythe(w))addSpecterSoul(a);
 
             if(h(a,"opportunist/duelist/specialization")&&!pr&&a.getOffhandItem().isEmpty()&&oneHanded(w)){
                 int tempo=AbilityState.getInt(a,TEMPO);
@@ -482,7 +482,7 @@ public final class FinalSpecializationEventsV2 {
         if(old!=null&&dist2(old,cur)<.01)AbilityState.setInt(p,MARKSMAN_STILL,Math.min(80,AbilityState.getInt(p,MARKSMAN_STILL)+10));else AbilityState.setInt(p,MARKSMAN_STILL,0);
         LAST_POS.put(p.getUUID(),cur);
 
-        if(n>AbilityState.getLong(p,SOUL_UNTIL))AbilityState.setInt(p,SOUL,0);
+        if(n>AbilityState.getLong(p,SPECTER_SOUL_UNTIL))AbilityState.setInt(p,SPECTER_SOUL,0);\n        if(n>AbilityState.getLong(p,OCCULT_SOUL_UNTIL))AbilityState.setInt(p,OCCULT_SOUL,0);
         if(n>AbilityState.getLong(p,TEMPO_UNTIL))AbilityState.setInt(p,TEMPO,0);
         if(n>AbilityState.getLong(p,RESOLVE_UNTIL))AbilityState.setInt(p,RESOLVE,0);
         if(n>AbilityState.getLong(p,EARTH_UNTIL))AbilityState.setInt(p,EARTH,0);

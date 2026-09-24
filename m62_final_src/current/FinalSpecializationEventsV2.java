@@ -707,7 +707,7 @@ public final class FinalSpecializationEventsV2 {
         setAttr(p,"irons_spellbooks:spell_power","weave_power",weaveAlive?weave*.04:0);
         setAttr(p,"irons_spellbooks:cooldown_reduction","weave_cdr",weaveAlive?weave*.03:0);
         boolean weaveBurst=n<=AbilityState.getLong(p,"m62_weave_burst_until");
-        setAttr(p,"irons_spellbooks:spell_power","weave_burst_power",weaveBurst?.30:0);
+        setAttr(p,"irons_spellbooks:spell_power","weave_burst_power",0);
         setAttr(p,"irons_spellbooks:cooldown_reduction","weave_burst_cdr",weaveBurst?.40:0);
 
         // Occult finisher and Geomancer burst cleanup.

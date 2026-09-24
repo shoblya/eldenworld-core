@@ -192,6 +192,8 @@ public final class FinalSpecializationEventsV2 {
         Entity src=e.getSource().getEntity();
         if(src instanceof ServerPlayer a){
             LivingEntity t=e.getEntity();ItemStack w=a.getMainHandItem();float x=e.getAmount();boolean pr=projectile(e);long n=now(a);
+            AbilityState.setLong(a,"m62_pilgrim_combat_until",n+100L);
+            AbilityState.setInt(a,"m62_pilgrim",0);
 
             // ROGUE
             if(h(a,"shadowstep/nightblade/specialization")&&!pr){
@@ -216,12 +218,12 @@ public final class FinalSpecializationEventsV2 {
                 if(was&&t.getHealth()<=t.getMaxHealth()*.30f)x*=m(a,"ghost/assassin")?1.35f:1.15f;
             }
             if(h(a,"ghost/specter/specialization")&&!pr&&scythe(w)){
-                addSpecterSoul(a);
                 if(m(a,"ghost/specter")&&AbilityState.getInt(a,SPECTER_SOUL)>=3){
-                    AbilityState.setInt(a,SPECTER_SOUL,0);
-                    AbilityState.setLong(a,SPECTER_SOUL_UNTIL,0L);
+                    clearSpecterSouls(a);
                     effectPath(t,"soul_lock",3,0);
                     effect(t,"irons_spellbooks:soul_burn",5,1);
+                }else{
+                    addSpecterSoul(a);
                 }
             }
             if(h(a,"ghost/phantom/specialization")&&n<=AbilityState.getLong(a,PHANTOM_WINDOW)){
@@ -358,6 +360,8 @@ public final class FinalSpecializationEventsV2 {
 
         if(e.getEntity() instanceof ServerPlayer d){
             float x=e.getAmount();Entity attacker=e.getSource().getEntity();long n=now(d);
+            AbilityState.setLong(d,"m62_pilgrim_combat_until",n+100L);
+            AbilityState.setInt(d,"m62_pilgrim",0);
 
             // ROGUE defense
             if(h(d,"shadowstep/riftwalker/specialization")&&x>=d.getMaxHealth()*.15f&&cd(d,"m62_rift",m(d,"shadowstep/riftwalker")?120L:160L)){
@@ -424,7 +428,8 @@ public final class FinalSpecializationEventsV2 {
                     AbilityState.setString(d,AEGIS_SCHOOL,school);
                     AbilityState.setLong(d,AEGIS_UNTIL,n+(m(d,"arcane_ward/aegis")?160L:120L));
                 }
-                if(h(d,"arcane_ward/spellbreaker/specialization")&&attacker!=null){
+                if(h(d,"arcane_ward/spellbreaker/specialization")&&attacker!=null
+                        && cd(d,"m62_spellbreaker_open",200L)){
                     AbilityState.setString(d,SPELLBREAKER_TARGET,attacker.getUUID().toString());
                     AbilityState.setLong(d,SPELLBREAKER_UNTIL,n+(m(d,"arcane_ward/spellbreaker")?120L:80L));
                 }
@@ -775,9 +780,31 @@ public final class FinalSpecializationEventsV2 {
 
         // Pilgrim.
         if(h(p,"wayfarer/pilgrim/specialization")){
-            int mv=AbilityState.getInt(p,"m62_pilgrim");if(old!=null&&dist2(old,cur)>.04)mv=Math.min(80,mv+10);else mv=Math.max(0,mv-20);AbilityState.setInt(p,"m62_pilgrim",mv);
-            if(mv>=60){vanilla(p,MobEffects.MOVEMENT_SPEED,2,0);effect(p,"irons_spellbooks:vigor",2,0);if(m(p,"wayfarer/pilgrim")){vanilla(p,MobEffects.REGENERATION,2,0);for(ServerPlayer ally:nearbyPlayers(p,8))vanilla(ally,MobEffects.MOVEMENT_SPEED,2,0);}}
-            else if(m(p,"wayfarer/pilgrim")&&mv==0)vanilla(p,MobEffects.WEAKNESS,5,0);
+            int mv=AbilityState.getInt(p,"m62_pilgrim");
+            int stopped=AbilityState.getInt(p,"m62_pilgrim_stopped");
+            boolean outOfCombat=n>AbilityState.getLong(p,"m62_pilgrim_combat_until");
+            boolean moving=old!=null&&dist2(old,cur)>.04;
+            if(!outOfCombat){
+                mv=0;stopped=0;
+            }else if(moving){
+                mv=Math.min(600,mv+10);stopped=0;
+            }else{
+                stopped=Math.min(100,stopped+10);
+                if(stopped>=100&&mv>0){
+                    mv=0;
+                    if(m(p,"wayfarer/pilgrim")&&cd(p,"m62_pilgrim_stop_price",100L))vanilla(p,MobEffects.WEAKNESS,5,0);
+                }
+            }
+            AbilityState.setInt(p,"m62_pilgrim",mv);
+            AbilityState.setInt(p,"m62_pilgrim_stopped",stopped);
+            if(mv>=600){
+                vanilla(p,MobEffects.MOVEMENT_SPEED,2,0);
+                effect(p,"irons_spellbooks:vigor",2,0);
+                if(m(p,"wayfarer/pilgrim")){
+                    vanilla(p,MobEffects.REGENERATION,2,0);
+                    for(ServerPlayer ally:nearbyPlayers(p,8))vanilla(ally,MobEffects.MOVEMENT_SPEED,2,0);
+                }
+            }
         }
 
         // Cartographer first-biome reward.
@@ -982,7 +1009,12 @@ public final class FinalSpecializationEventsV2 {
     static boolean has(ServerPlayer p,String s){return h(p,s);}
     static boolean mastery(ServerPlayer p,String s){return m(p,s);}
     static long time(ServerPlayer p){return now(p);}
-    static int souls(ServerPlayer p){return AbilityState.getInt(p,OCCULT_SOUL);}
+    static int specterSouls(ServerPlayer p){return AbilityState.getInt(p,SPECTER_SOUL);}
+    static void gainSpecterSoul(ServerPlayer p){addSpecterSoul(p);}
+    static void clearSpecterSouls(ServerPlayer p){AbilityState.setInt(p,SPECTER_SOUL,0);AbilityState.setLong(p,SPECTER_SOUL_UNTIL,0);}
+    static void applyEffectTo(LivingEntity e,String rid,int sec,int amp){effect(e,rid,sec,amp);}
+    static void applyEffectPathTo(LivingEntity e,String token,int sec,int amp){effectPath(e,token,sec,amp);}
+        static int souls(ServerPlayer p){return AbilityState.getInt(p,OCCULT_SOUL);}
     static void gainSoul(ServerPlayer p){addOccultSoul(p);}
     static void clearSouls(ServerPlayer p){AbilityState.setInt(p,OCCULT_SOUL,0);AbilityState.setLong(p,OCCULT_SOUL_UNTIL,0);}
     static void setOccultBurst(ServerPlayer p,int ticks){AbilityState.setLong(p,OCCULT_BURST,now(p)+ticks);}

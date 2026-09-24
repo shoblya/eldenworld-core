@@ -417,9 +417,11 @@ public final class FinalSpecializationEventsV2 {
             }
 
             if(AbilityUtil.isMagicLike(e.getSource())){
-                String el=magicElementFromDamage(e.getSource());
-                if(h(d,"arcane_ward/aegis/specialization")&&!el.isEmpty()){
-                    AbilityState.setString(d,AEGIS_SCHOOL,el);
+                String exact=n<=AbilityState.getLong(d,"m62_exact_spell_school_until")
+                        ?AbilityState.getString(d,"m62_exact_spell_school"):"";
+                String school=!exact.isEmpty()?exact:magicElementFromDamage(e.getSource());
+                if(h(d,"arcane_ward/aegis/specialization")&&!school.isEmpty()){
+                    AbilityState.setString(d,AEGIS_SCHOOL,school);
                     AbilityState.setLong(d,AEGIS_UNTIL,n+(m(d,"arcane_ward/aegis")?160L:120L));
                 }
                 if(h(d,"arcane_ward/spellbreaker/specialization")&&attacker!=null){
@@ -707,18 +709,14 @@ public final class FinalSpecializationEventsV2 {
         setOccultSchoolPower(p,"occult_burst",n<=AbilityState.getLong(p,OCCULT_BURST)?.30:0);
         setAttr(p,"irons_spellbooks:spell_power","geo_burst",n<=AbilityState.getLong(p,"m62_geo_burst_until")?.35:0);
 
-        // Aegis specialization: one recognized school up, other recognized schools down only at Mastery.
+        // Aegis specialization: use the real registered Iron's/addon school when available.
         String aegisSchool=AbilityState.getString(p,AEGIS_SCHOOL);
         boolean aegisAlive=!aegisSchool.isEmpty()&&n<=AbilityState.getLong(p,AEGIS_UNTIL);
-        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature","holy","ender","blood","evocation","eldritch","abyssal"}){
-            double v=aegisAlive?(school.equals(aegisSchool)?(m(p,"arcane_ward/aegis")?.35:.20):(m(p,"arcane_ward/aegis")?-.15:0)):0;
-            setElementSchoolResist(p,school,"aegis_"+school,v);
-        }
+        setDynamicAegisResists(p,aegisAlive?aegisSchool:"",m(p,"arcane_ward/aegis"));
+
         String burstSchool=AbilityState.getString(p,AEGIS_BURST_SCHOOL);
         boolean aegisBurst=!burstSchool.isEmpty()&&n<=AbilityState.getLong(p,AEGIS_BURST_UNTIL);
-        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature","holy","ender","blood","evocation","eldritch","abyssal"}){
-            setElementSchoolPower(p,school,"aegis_burst_"+school,aegisBurst&&school.equals(burstSchool)?.25:0);
-        }
+        setDynamicSchoolPowerById(p,aegisBurst?burstSchool:"","aegis_burst_exact",aegisBurst?.25:0);
 
         // Technomancer Mastery: Overcharged, then a short crash.
         boolean overcharged=n<=AbilityState.getLong(p,"m62_overcharged");
@@ -913,6 +911,62 @@ public final class FinalSpecializationEventsV2 {
 
     static void setAttr(ServerPlayer p,String attr,String key,double amount){UUID u=UUID.nameUUIDFromBytes(("eldenworld:m62:"+key).getBytes(StandardCharsets.UTF_8));AbilityUtil.setDynamicAttributeModifier(p,id(attr),u,"EldenWorld "+key,amount,AttributeModifier.Operation.MULTIPLY_TOTAL);}
     static void setAttrAdd(ServerPlayer p,String attr,String key,double amount){UUID u=UUID.nameUUIDFromBytes(("eldenworld:m62:add:"+key).getBytes(StandardCharsets.UTF_8));AbilityUtil.setDynamicAttributeModifier(p,id(attr),u,"EldenWorld "+key,amount,AttributeModifier.Operation.ADDITION);}
+    private static int schoolAttributeScore(ResourceLocation attr,String rawSchool){
+        if(rawSchool==null||rawSchool.isEmpty())return Integer.MIN_VALUE;
+        ResourceLocation school;
+        try{school=id(rawSchool.contains(":")?rawSchool:"minecraft:"+rawSchool);}
+        catch(RuntimeException ex){return Integer.MIN_VALUE;}
+        String q=attr.getPath().toLowerCase(Locale.ROOT);
+        String sp=school.getPath().toLowerCase(Locale.ROOT);
+        int score=0;
+        if(attr.getNamespace().equals(school.getNamespace()))score+=100;
+        if(q.contains(sp))score+=80;
+        for(String token:sp.split("[_/\\.-]+")){
+            if(token.length()>=3&&q.contains(token))score+=10;
+        }
+        if(sp.equals("geo")&&q.contains("earth"))score+=80;
+        if(sp.equals("aqua")&&q.contains("water"))score+=80;
+        return score;
+    }
+
+    private static void setDynamicAegisResists(ServerPlayer p,String rawSchool,boolean mastery){
+        ResourceLocation best=null;int bestScore=Integer.MIN_VALUE;
+        for(ResourceLocation rl:ForgeRegistries.ATTRIBUTES.getKeys()){
+            String q=rl.getPath().toLowerCase(Locale.ROOT);
+            if(!q.contains("magic_resist"))continue;
+            int score=schoolAttributeScore(rl,rawSchool);
+            if(score>bestScore){bestScore=score;best=rl;}
+        }
+        for(ResourceLocation rl:ForgeRegistries.ATTRIBUTES.getKeys()){
+            String q=rl.getPath().toLowerCase(Locale.ROOT);
+            if(!q.contains("magic_resist"))continue;
+            UUID u=UUID.nameUUIDFromBytes(("eldenworld:m62:aegis_registry:"+rl).getBytes(StandardCharsets.UTF_8));
+            double amount=0;
+            if(best!=null&&!rawSchool.isEmpty()){
+                if(rl.equals(best))amount=mastery?.35:.20;
+                else if(mastery)amount=-.15;
+            }
+            AbilityUtil.setDynamicAttributeModifier(p,rl,u,"EldenWorld Aegis registry",amount,AttributeModifier.Operation.MULTIPLY_TOTAL);
+        }
+    }
+
+    private static void setDynamicSchoolPowerById(ServerPlayer p,String rawSchool,String key,double amount){
+        ResourceLocation best=null;int bestScore=Integer.MIN_VALUE;
+        for(ResourceLocation rl:ForgeRegistries.ATTRIBUTES.getKeys()){
+            String q=rl.getPath().toLowerCase(Locale.ROOT);
+            if(!q.contains("spell_power"))continue;
+            int score=schoolAttributeScore(rl,rawSchool);
+            if(score>bestScore){bestScore=score;best=rl;}
+        }
+        for(ResourceLocation rl:ForgeRegistries.ATTRIBUTES.getKeys()){
+            String q=rl.getPath().toLowerCase(Locale.ROOT);
+            if(!q.contains("spell_power"))continue;
+            UUID u=UUID.nameUUIDFromBytes(("eldenworld:m62:"+key+":"+rl).getBytes(StandardCharsets.UTF_8));
+            double v=(best!=null&&rl.equals(best))?amount:0;
+            AbilityUtil.setDynamicAttributeModifier(p,rl,u,"EldenWorld "+key,v,AttributeModifier.Operation.MULTIPLY_TOTAL);
+        }
+    }
+
     static void setElementSchoolPower(ServerPlayer p,String element,String key,double amount){
         for(ResourceLocation rl:ForgeRegistries.ATTRIBUTES.getKeys())if(isSchoolPowerAttribute(rl,element)){UUID u=UUID.nameUUIDFromBytes(("eldenworld:m62:"+key+":"+rl).getBytes(StandardCharsets.UTF_8));AbilityUtil.setDynamicAttributeModifier(p,rl,u,"EldenWorld "+key,amount,AttributeModifier.Operation.MULTIPLY_TOTAL);}
     }

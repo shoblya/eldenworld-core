@@ -48,6 +48,7 @@ dependencies {
 
     implementation fg.deobf('curse.maven:passive-skill-tree-850298:8483796')
     implementation fg.deobf('curse.maven:irons-spells-n-spellbooks-855414:8680180')
+    implementation fg.deobf('curse.maven:combat-roll-678036:5625925')
 }
 
 mixin {

@@ -188,8 +188,8 @@
     "tree": "keen_instinct",
     "branch": "Marksman",
     "profile": "ranger",
-    "specialization": "После 2 сек. неподвижности активируется Sniper's Eye. Следующий projectile: +25% damage и +10% armor penetration. Перезарядка: 8 сек.",
-    "mastery": "Подготовленный projectile: +50% damage и +20% armor penetration; создаётся второй projectile с 50% силы. Цена: по целям ближе 6 блоков projectile damage -25%.",
+    "specialization": "После 2 сек. неподвижности активируется Sniper's Eye. Следующий projectile наносит +25% урона. Перезарядка: 8 сек.",
+    "mastery": "Sniper's Eye усиливается: подготовленный projectile наносит итоговый x2.0 урон вместо x1.25. Это урон одного снаряда, без создания второго projectile. Цена: по целям ближе 6 блоков projectile damage -25%.",
     "downside": []
   },
   {

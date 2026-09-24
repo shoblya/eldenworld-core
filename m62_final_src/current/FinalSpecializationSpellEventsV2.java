@@ -115,6 +115,15 @@ public final class FinalSpecializationSpellEventsV2 {
             AbilityState.setLong(p,"m62_weave_burst_until",0L);
         }
 
+        if(FinalSpecializationEventsV2.has(p,"archmage/occultist/specialization")
+                &&FinalSpecializationEventsV2.mastery(p,"archmage/occultist")
+                &&isOccult(school,"")
+                &&n<=FinalSpecializationEventsV2.occultBurstUntil(p)){
+            e.setAmount(e.getAmount()*1.30f);
+            FinalSpecializationEventsV2.applyEffectTo(target,"irons_spellbooks:soul_burn",5,1);
+            FinalSpecializationEventsV2.setOccultBurst(p,-1);
+        }
+
         if(FinalSpecializationEventsV2.has(p,"ghost/specter/specialization")
                 &&FinalSpecializationEventsV2.mastery(p,"ghost/specter")
                 &&isOccult(school,"")
@@ -238,7 +247,6 @@ public final class FinalSpecializationSpellEventsV2 {
         if(FinalSpecializationEventsV2.mastery(p,"archmage/occultist")&&FinalSpecializationEventsV2.souls(p)>=3){
             FinalSpecializationEventsV2.clearSouls(p);
             FinalSpecializationEventsV2.setOccultBurst(p,40);
-            FinalSpecializationEventsV2.setOccultSchoolPower(p,"occult_burst",.30);
             p.setHealth(Math.max(1.0f,p.getHealth()-p.getMaxHealth()*.05f));
         }else FinalSpecializationEventsV2.gainSoul(p);
     }

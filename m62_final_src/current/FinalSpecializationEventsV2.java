@@ -623,13 +623,13 @@ public final class FinalSpecializationEventsV2 {
         // Aegis specialization: one recognized school up, other recognized schools down only at Mastery.
         String aegisSchool=AbilityState.getString(p,AEGIS_SCHOOL);
         boolean aegisAlive=!aegisSchool.isEmpty()&&n<=AbilityState.getLong(p,AEGIS_UNTIL);
-        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature"}){
+        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature","holy","ender","blood","evocation","eldritch","abyssal"}){
             double v=aegisAlive?(school.equals(aegisSchool)?(m(p,"arcane_ward/aegis")?.35:.20):(m(p,"arcane_ward/aegis")?-.15:0)):0;
             setElementSchoolResist(p,school,"aegis_"+school,v);
         }
         String burstSchool=AbilityState.getString(p,AEGIS_BURST_SCHOOL);
         boolean aegisBurst=!burstSchool.isEmpty()&&n<=AbilityState.getLong(p,AEGIS_BURST_UNTIL);
-        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature"}){
+        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature","holy","ender","blood","evocation","eldritch","abyssal"}){
             setElementSchoolPower(p,school,"aegis_burst_"+school,aegisBurst&&school.equals(burstSchool)?.25:0);
         }
 
@@ -738,6 +738,12 @@ public final class FinalSpecializationEventsV2 {
         if(z.contains("earth")||z.contains("geo"))return"earth";
         if(z.contains("water")||z.contains("aqua"))return"water";
         if(z.contains("nature")||z.contains("verdant")||z.contains("poison"))return"nature";
+        if(z.contains("holy"))return"holy";
+        if(z.contains("ender"))return"ender";
+        if(z.contains("blood"))return"blood";
+        if(z.contains("evocation")||z.contains("arcane"))return"evocation";
+        if(z.contains("eldritch"))return"eldritch";
+        if(z.contains("abyss"))return"abyssal";
         return"";
     }
 

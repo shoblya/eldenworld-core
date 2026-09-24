@@ -470,14 +470,6 @@ public final class FinalSpecializationEventsV2 {
     }
 
     @SubscribeEvent
-    public static void xp(LivingExperienceDropEvent e){
-        ServerPlayer p=e.getAttackingPlayer() instanceof ServerPlayer sp?sp:null;
-        if(p!=null&&h(p,"treasure_hunter/fortune_hunter/specialization")&&elite(e.getEntity())){
-            double mult=m(p,"treasure_hunter/fortune_hunter")?1.35:1.20;e.setDroppedExperience((int)Math.ceil(e.getDroppedExperience()*mult));
-        }
-    }
-
-    @SubscribeEvent
     public static void dimension(PlayerEvent.PlayerChangedDimensionEvent e){
         if(!(e.getEntity() instanceof ServerPlayer p))return;long n=now(p);
         AbilityState.setLong(p,TRAIL_DIM_SINCE,n);AbilityState.setString(p,TRAIL_TYPE,"");AbilityState.setLong(p,TRAIL_UNTIL,0L);
@@ -508,12 +500,7 @@ public final class FinalSpecializationEventsV2 {
     public static void breakBlock(BlockEvent.BreakEvent e){
         if(!(e.getPlayer() instanceof ServerPlayer p)||!e.getState().is(Tags.Blocks.ORES))return;long n=now(p);
         if(h(p,"enduring_tools/prospector/specialization")){
-            double mul=m(p,"enduring_tools/prospector")?1.30:1.15;e.setExpToDrop((int)Math.ceil(e.getExpToDrop()*mul));
             if(p.getRandom().nextFloat()<(m(p,"enduring_tools/prospector")?.35f:.20f))effect(p,"ars_nouveau:magic_find",m(p,"enduring_tools/prospector")?10:8,m(p,"enduring_tools/prospector")?1:0);
-        }
-        if(h(p,"treasure_hunter/fortune_hunter/specialization")){
-            double mul=m(p,"treasure_hunter/fortune_hunter")?1.35:1.20;
-            e.setExpToDrop((int)Math.ceil(e.getExpToDrop()*mul));
         }
         if(h(p,"enduring_tools/geomancer/specialization")){inc(p,EARTH,5);AbilityState.setLong(p,EARTH_UNTIL,n+200L);}
     }

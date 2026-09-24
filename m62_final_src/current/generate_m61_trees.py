@@ -7,27 +7,16 @@ root=project/'src/main/resources'; skills=root/'data/eldenworld/skills'; trees=r
 for p in (skills,trees,reqs):
     if p.exists(): shutil.rmtree(p)
     p.mkdir(parents=True,exist_ok=True)
-slug=lambda s:s.lower().replace(' ','_').replace("'",'').replace('/','_')
+slug=lambda s:s.lower().replace(' ','_').replace("'",'')
 meta={
 'shadowstep':('Shadowstep','skilltree:miner_mastery','rogue'),'ghost':('Ghost','skilltree:miner_subclass_2_mastery','rogue'),'opportunist':('Opportunist','skilltree:miner_subclass_1_mastery','rogue'),
 'juggernaut':('Juggernaut','skilltree:blacksmith_mastery','warrior'),'unyielding':('Unyielding','skilltree:blacksmith_subclass_1_mastery','warrior'),'second_wind':('Second Wind','skilltree:blacksmith_subclass_2_mastery','warrior'),
 'keen_instinct':('Keen Instinct','skilltree:hunter_mastery','ranger'),'windrunner':('Windrunner','skilltree:hunter_subclass_1_mastery','ranger'),'pathfinder':('Pathfinder','skilltree:hunter_subclass_2_mastery','ranger'),
 'archmage':('Archmage','skilltree:alchemist_mastery','mage'),'manaflow':('Manaflow','skilltree:alchemist_subclass_2_mastery','mage'),'arcane_ward':('Arcane Ward','skilltree:alchemist_subclass_1_mastery','mage'),
-'master_builder':('Builder','skilltree:cook_mastery','builder'),'enduring_tools':('Miner','skilltree:cook_subclass_1_mastery','builder'),'prospector':('Cook','skilltree:cook_subclass_2_mastery','builder'),
+'master_builder':('Master Builder','skilltree:cook_mastery','builder'),'enduring_tools':('Enduring Tools','skilltree:cook_subclass_1_mastery','builder'),'prospector':('Prospector','skilltree:cook_subclass_2_mastery','builder'),
 'wayfarer':('Wayfarer','skilltree:enchanter_mastery','adventurer'),'treasure_hunter':('Treasure Hunter','skilltree:enchanter_subclass_1_mastery','adventurer'),'survivor':('Survivor','skilltree:enchanter_subclass_2_mastery','adventurer')}
 icons={'rogue':'minecraft:textures/item/iron_sword.png','warrior':'minecraft:textures/item/shield.png','ranger':'minecraft:textures/item/bow.png','mage':'minecraft:textures/item/enchanted_book.png','builder':'minecraft:textures/item/iron_pickaxe.png','adventurer':'minecraft:textures/item/compass_00.png'}
 branch_icons={'nightblade':'minecraft:textures/item/iron_sword.png','riftwalker':'minecraft:textures/item/ender_pearl.png','mirage':'minecraft:textures/item/echo_shard.png','assassin':'minecraft:textures/item/stone_sword.png','phantom':'minecraft:textures/item/phantom_membrane.png','specter':'minecraft:textures/item/soul_lantern.png','duelist':'minecraft:textures/item/golden_sword.png','predator':'minecraft:textures/item/iron_axe.png','trickster':'minecraft:textures/item/snowball.png','berserker':'minecraft:textures/item/diamond_axe.png','bloodguard':'minecraft:textures/item/shield.png','colossus':'minecraft:textures/item/netherite_sword.png','bulwark':'minecraft:textures/item/shield.png','thorned_guard':'minecraft:textures/item/sweet_berries.png','spellguard':'minecraft:textures/item/totem_of_undying.png','revenant':'minecraft:textures/item/totem_of_undying.png','vanguard':'minecraft:textures/item/gold_ingot.png','ironheart':'minecraft:textures/item/iron_ingot.png','marksman':'minecraft:textures/item/bow.png','hunter':'minecraft:textures/item/crossbow_standby.png','sentinel':'minecraft:textures/item/spectral_arrow.png','gale_dancer':'minecraft:textures/item/feather.png','stormshot':'minecraft:textures/item/trident.png','skirmisher':'minecraft:textures/item/arrow.png','beastmaster':'minecraft:textures/item/bone.png','dragon_rider':'minecraft:textures/item/saddle.png','trailblazer':'minecraft:textures/item/compass_00.png','elementalist':'minecraft:textures/item/blaze_powder.png','occultist':'minecraft:textures/item/ender_eye.png','arcanist':'minecraft:textures/item/enchanted_book.png','channeler':'minecraft:textures/item/amethyst_shard.png','reservoir':'minecraft:textures/item/lapis_lazuli.png','overcaster':'minecraft:textures/item/fire_charge.png','aegis':'minecraft:textures/item/shield.png','spellbreaker':'minecraft:textures/item/milk_bucket.png','runewarden':'minecraft:textures/item/enchanted_book.png','architect':'minecraft:textures/item/brick.png','engineer':'minecraft:textures/item/redstone.png','fortifier':'minecraft:textures/item/iron_ingot.png','smith':'minecraft:textures/item/iron_ingot.png','temperer':'minecraft:textures/item/netherite_ingot.png','runesmith':'minecraft:textures/item/enchanted_book.png','deep_delver':'minecraft:textures/item/iron_pickaxe.png','gem_hunter':'minecraft:textures/item/diamond.png','excavator':'minecraft:textures/item/diamond_pickaxe.png','dimension_walker':'minecraft:textures/item/ender_eye.png','pilgrim':'minecraft:textures/item/leather_boots.png','cartographer':'minecraft:textures/item/map.png','relic_seeker':'minecraft:textures/item/totem_of_undying.png','fortune_hunter':'minecraft:textures/item/emerald.png','archaeologist':'minecraft:textures/item/brush.png','last_stand':'minecraft:textures/item/golden_apple.png','wastelander':'minecraft:textures/item/leather_chestplate.png','monster_slayer':'minecraft:textures/item/diamond_sword.png'}
-branch_icons.update({
-'stoneguard':'minecraft:textures/item/amethyst_shard.png',
-'paladin':'minecraft:textures/item/golden_apple.png',
-'technomancer':'minecraft:textures/item/comparator.png',
-'prospector':'minecraft:textures/item/diamond.png',
-'geomancer':'minecraft:textures/item/amethyst_shard.png',
-'chef':'minecraft:textures/item/cooked_beef.png',
-'brewer':'minecraft:textures/item/potion.png',
-'feastmaster':'minecraft:textures/item/golden_carrot.png',
-'broker_envoy':'minecraft:textures/item/emerald.png'
-})
 # Unified stat-node system: every branch has 4 small stats and one large stat, selected from a thematic profile.
 profiles={
 'offense':[('Точный удар','minecraft:generic.attack_damage',.03,1,'+3% урона атаки'),('Быстрые руки','minecraft:generic.attack_speed',.03,1,'+3% скорости атаки'),('Острый расчёт','attributeslib:crit_chance',.03,0,'+3% шанса критического удара'),('Лёгкий шаг','minecraft:generic.movement_speed',.02,1,'+2% скорости передвижения'),('Смертельная точность','attributeslib:crit_damage',.10,0,'+10% критического урона')],
@@ -55,7 +44,7 @@ profiles.update({
 })
 
 def bonus(attr,amount,op,key):
- return {'type':'skilltree:attribute','attribute':attr,'id':str(uuid.uuid5(uuid.NAMESPACE_URL,'eldenworld:m62:'+key)),'name':'EldenWorld M6.2 stat','amount':amount,'operation':op,'player_multiplier':{'type':'skilltree:none'},'player_condition':{'type':'skilltree:none'}}
+ return {'type':'skilltree:attribute','attribute':attr,'id':str(uuid.uuid5(uuid.NAMESPACE_URL,'eldenworld:m61:'+key)),'name':'EldenWorld M6.1 stat','amount':amount,'operation':op,'player_multiplier':{'type':'skilltree:none'},'player_condition':{'type':'skilltree:none'}}
 def write_node(idp,title,x,y,start,connections,group,kind,branch=None,desc='',stat=None,extra_bonuses=None):
  ic=icons[group] if branch is None else branch_icons.get(slug(branch),icons[group])
  bonuses=[]
@@ -72,12 +61,12 @@ def req(idp,lvl,parent,previous=None):
  (reqs/(idp.replace('/','__')+'.json')).write_text(json.dumps({'skill':'eldenworld:'+idp,'min_pst_level':lvl,'required_skills':needed},indent=2))
 by_tree={k:[] for k in meta}
 for r in rows: by_tree[r['tree']].append(r)
-levels=[0,0,0,0,0,0,0]
+levels=[50,60,70,85,105,125,150]
 for key,(disp,parent,group) in meta.items():
  branches=by_tree[key]; assert len(branches)==3
  rootid=f'{key}/root'; ids=['eldenworld:'+rootid]
  first=[f"{key}/{slug(r['branch'])}/stat_1" for r in branches]
- write_node(rootid,disp,0,0,True,first,group,'start',desc=f'{disp}: стартовая точка. Выберите одну из трёх специализаций. Внутренние ноды ограничены порядком ветки и стоимостью skill points, без отдельного level-gate.')
+ write_node(rootid,disp,0,0,True,first,group,'start',desc=f'{disp}: стартовая точка. Выберите одну из трёх специализаций; каждая ветка ведёт до Mastery 150 уровня.')
  req(rootid,40,parent)
  for bi,r in enumerate(branches):
   b=r['branch']; profile=profiles[r['profile']]; ang=2*math.pi*bi/3-math.pi/2; ux,uy=math.cos(ang),math.sin(ang)
@@ -97,13 +86,4 @@ assert len(list(trees.glob('*.json')))==18
 alltext='\n'.join(p.read_text() for p in skills.glob('*.json'))
 for bad in ('SPECIALIZATION:','MASTERY: более','STAT:','BIG STAT:','Реальный эффект реализуется'):
  assert bad not in alltext,bad
-for legacy in ('Thorned Guard','Vanguard','Runewarden','Archaeologist','Smith Mastery','Temperer Mastery','Runesmith Mastery','Gem Hunter','Excavator Mastery'):
- assert legacy not in alltext,legacy
-# Internal specialization-tree nodes deliberately have no separate character-level gate.
-for p in reqs.glob('*.json'):
- data=json.loads(p.read_text())
- if data['skill'].endswith('/root'):
-  assert data['min_pst_level']==40
- else:
-  assert data['min_pst_level']==0
-print('generated',count,'nodes, 18 trees, 54 M6.2 specialization/mastery descriptions; topology preserved; inner level gates disabled')
+print('generated',count,'nodes, 18 trees, 54 concrete specialization/mastery descriptions')

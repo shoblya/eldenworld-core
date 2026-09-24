@@ -14,6 +14,9 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.PotionItem;
+import net.minecraft.world.inventory.MerchantMenu;
+import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.Tags;
@@ -28,6 +31,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
+import net.minecraftforge.event.brewing.PlayerBrewedPotionEvent;
 
 import java.util.*;
 import java.nio.charset.StandardCharsets;
@@ -100,6 +104,9 @@ public final class KeystoneAbilityEvents {
     private static final String WAYFARER_AURA_UNTIL = "wayfarer_aura_until";
     private static final String COOK_OWNER = "EldenWorldCookOwner";
     private static final Map<UUID, Map<ResourceLocation, Integer>> COOK_EFFECT_SNAPSHOT = new HashMap<>();
+    private record TradeDiscount(MerchantOffer offer, int delta) {}
+    private static final Map<UUID, List<TradeDiscount>> TREASURE_TRADE_DISCOUNTS = new HashMap<>();
+    private static final Map<UUID, Integer> TREASURE_TRADE_MENU = new HashMap<>();
 
     private KeystoneAbilityEvents() {}
 
@@ -139,6 +146,7 @@ public final class KeystoneAbilityEvents {
         }
 
         AbilityState.setCooldown(player, SHADOWSTEP_CD, now, 20L * 60L);
+        AbilityState.setLong(player, "m62_nb_window", now + 60L);
         AbilityUtil.tryShadowstep(player, 4.5);
         applyEffectById(player, TRUE_INVISIBILITY, 20 * 4, 0);
         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20 * 5, 1, true, false, true));
@@ -352,11 +360,11 @@ public final class KeystoneAbilityEvents {
         int rhythm = AbilityState.getInt(player, BUILDER_RHYTHM);
         long lastPlace = AbilityState.getLong(player, BUILDER_LAST_PLACE);
         if (rhythm > 0 && now - lastPlace > 60L) {
-            rhythm--;
-            AbilityState.setInt(player, BUILDER_RHYTHM, rhythm);
-            AbilityState.setLong(player, BUILDER_LAST_PLACE, now);
+            rhythm = 0;
+            AbilityState.setInt(player, BUILDER_RHYTHM, 0);
         }
-        if (rhythm >= 2) {
+        if (rhythm >= 1) {
+            // 1-2 = Haste I, 3-4 = Haste II, 5-6 = Haste III.
             AbilityUtil.refreshEffect(player, MobEffects.DIG_SPEED, Math.min(2, (rhythm - 1) / 2));
         }
         if (rhythm >= 4) {
@@ -380,9 +388,12 @@ public final class KeystoneAbilityEvents {
     }
 
     private static void tickTreasureHunter(ServerPlayer player) {
-        if (!AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER) || player.tickCount % 20 != 0) {
+        if (!AbilityUtil.has(player, KeystoneIds.TREASURE_HUNTER)) {
+            clearTreasureTradeDiscount(player);
             return;
         }
+        tickTreasureTradeDiscount(player);
+        if (player.tickCount % 20 != 0) return;
         player.level().getBiome(player.blockPosition()).unwrapKey().ifPresent(key -> {
             String safeKey = key.location().toString().replace(':', '_').replace('/', '_');
             if (AbilityState.markOnce(player, TREASURE_BIOMES, safeKey)) {
@@ -509,6 +520,8 @@ public final class KeystoneAbilityEvents {
 
         event.setCanceled(true);
         AbilityState.setCooldown(player, SECOND_WIND_CD, now, 20L * 60L * 5L);
+        AbilityState.setLong(player, "m62_second_wind_trigger", now);
+        AbilityState.setInt(player, "m62_second_wind_serial", AbilityState.getInt(player, "m62_second_wind_serial") + 1);
         player.setHealth(Math.max(1.0f, player.getMaxHealth() * 0.35f));
         player.clearFire();
         player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 20 * 5, 1, true, false, true));
@@ -594,10 +607,20 @@ public final class KeystoneAbilityEvents {
     }
 
     @SubscribeEvent
+    public static void onBrewedPotion(PlayerBrewedPotionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player && AbilityUtil.has(player, KeystoneIds.PROSPECTOR)) {
+            ItemStack stack = event.getStack();
+            if (!stack.isEmpty() && stack.getItem() instanceof PotionItem) {
+                stack.getOrCreateTag().putUUID(COOK_OWNER, player.getUUID());
+            }
+        }
+    }
+
+    @SubscribeEvent
     public static void onUseStart(LivingEntityUseItemEvent.Start event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         ItemStack stack = event.getItem();
-        if (!isOwnCookFood(player, stack)) return;
+        if (!isOwnCookFood(player, stack) && !isOwnCookPotion(player, stack)) return;
         Map<ResourceLocation, Integer> snap = new HashMap<>();
         for (MobEffectInstance inst : player.getActiveEffects()) {
             ResourceLocation key = ForgeRegistries.MOB_EFFECTS.getKey(inst.getEffect());
@@ -610,8 +633,10 @@ public final class KeystoneAbilityEvents {
     public static void onUseFinish(LivingEntityUseItemEvent.Finish event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         ItemStack stack = event.getItem();
-        if (!isOwnCookFood(player, stack)) return;
-        player.getFoodData().eat(1, 0.0f);
+        boolean ownFood = isOwnCookFood(player, stack);
+        boolean ownPotion = isOwnCookPotion(player, stack);
+        if (!ownFood && !ownPotion) return;
+        if (ownFood) player.getFoodData().eat(1, 0.0f);
         Map<ResourceLocation, Integer> before = COOK_EFFECT_SNAPSHOT.remove(player.getUUID());
         if (before == null) before = Map.of();
         List<MobEffectInstance> boosted = new ArrayList<>();
@@ -635,6 +660,47 @@ public final class KeystoneAbilityEvents {
     private static boolean isOwnCookFood(ServerPlayer player, ItemStack stack) {
         return !stack.isEmpty() && stack.isEdible() && stack.hasTag() && stack.getTag().hasUUID(COOK_OWNER)
                 && player.getUUID().equals(stack.getTag().getUUID(COOK_OWNER));
+    }
+
+
+    private static boolean isOwnCookPotion(ServerPlayer player, ItemStack stack) {
+        return !stack.isEmpty() && stack.getItem() instanceof PotionItem && stack.hasTag()
+                && stack.getTag().hasUUID(COOK_OWNER) && player.getUUID().equals(stack.getTag().getUUID(COOK_OWNER));
+    }
+
+    private static void tickTreasureTradeDiscount(ServerPlayer player) {
+        if (!(player.containerMenu instanceof MerchantMenu menu)) {
+            clearTreasureTradeDiscount(player);
+            return;
+        }
+        int menuId = menu.containerId;
+        Integer previous = TREASURE_TRADE_MENU.get(player.getUUID());
+        if (previous != null && previous == menuId) return;
+
+        clearTreasureTradeDiscount(player);
+        List<TradeDiscount> records = new ArrayList<>();
+        for (MerchantOffer offer : menu.getOffers()) {
+            int current = offer.getCostA().getCount();
+            if (current <= 1) continue;
+            int target = Math.max(1, Math.round(current * 0.70f));
+            int reduction = Math.max(0, current - target);
+            if (reduction > 0) {
+                offer.addToSpecialPriceDiff(-reduction);
+                records.add(new TradeDiscount(offer, reduction));
+            }
+        }
+        TREASURE_TRADE_MENU.put(player.getUUID(), menuId);
+        TREASURE_TRADE_DISCOUNTS.put(player.getUUID(), records);
+    }
+
+    private static void clearTreasureTradeDiscount(ServerPlayer player) {
+        List<TradeDiscount> records = TREASURE_TRADE_DISCOUNTS.remove(player.getUUID());
+        if (records != null) {
+            for (TradeDiscount record : records) {
+                try { record.offer().addToSpecialPriceDiff(record.delta()); } catch (RuntimeException ignored) {}
+            }
+        }
+        TREASURE_TRADE_MENU.remove(player.getUUID());
     }
 
     private static void applyEffectById(LivingEntity entity, ResourceLocation id, int duration, int amplifier) {

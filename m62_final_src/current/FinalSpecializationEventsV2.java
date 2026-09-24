@@ -65,6 +65,9 @@ public final class FinalSpecializationEventsV2 {
     private static final String LAST_STAND="m62_last_stand_until";
     private static final String WASTE_TYPE="m62_waste_type", WASTE_STACK="m62_waste_stack", WASTE_UNTIL="m62_waste_until";
     private static final String FEAST_UNTIL="m62_feast_until", FEAST_AURA="m62_feast_aura", FEAST_WEAK_DONE="m62_feast_weak_done";
+    private static final String REV_SEEN="m62_revenant_seen", REV_UNTIL="m62_revenant_until", REV_PENALTY_AT="m62_revenant_penalty_at", REV_PENALTY_DONE="m62_revenant_penalty_done";
+    private static final String AEGIS_SCHOOL="m62_aegis_school", AEGIS_UNTIL="m62_aegis_until", AEGIS_BURST_SCHOOL="m62_aegis_burst_school", AEGIS_BURST_UNTIL="m62_aegis_burst_until";
+    private static final String SPELLBREAKER_TARGET="m62_spellbreaker_target", SPELLBREAKER_UNTIL="m62_spellbreaker_until";
     private static final String ARCH_ZONE="m62_arch_zone", FORT_BLOCK="m62_fort_block", FORT_UNTIL="m62_fort_until";
     private static final String SPEC_ROOT="EldenWorldM62Spec";
     private static final String COOK_OWNER="EldenWorldCookOwner";
@@ -254,6 +257,31 @@ public final class FinalSpecializationEventsV2 {
                 if(m(a,"second_wind/ironheart")&&r>=5&&heavy(w)){x*=1.30f;AbilityState.setInt(a,RESOLVE,0);effectPath(a,"hardware_update",5,1);effect(a,"irons_spellbooks:fortify",5,1);}
                 else{addResolve(a);x*=1f+.02f*AbilityState.getInt(a,RESOLVE);}
             }
+            if(h(a,"second_wind/revenant/specialization")&&n<=AbilityState.getLong(a,REV_UNTIL)){
+                x*=1.20f;
+                if(m(a,"second_wind/revenant"))a.heal(Math.min(a.getMaxHealth()*.10f,x*.10f));
+            }
+            if(h(a,"second_wind/paladin/specialization")&&hasAlly(a))x*=.85f;
+
+            if(h(a,"arcane_ward/spellbreaker/specialization")
+                    && n<=AbilityState.getLong(a,SPELLBREAKER_UNTIL)
+                    && t.getUUID().toString().equals(AbilityState.getString(a,SPELLBREAKER_TARGET))){
+                effectPath(t,"blackout",m(a,"arcane_ward/spellbreaker")?5:4,m(a,"arcane_ward/spellbreaker")?1:0);
+                if(m(a,"arcane_ward/spellbreaker"))effectPath(t,"erode",4,0);
+                AbilityState.setLong(a,SPELLBREAKER_UNTIL,0L);
+                AbilityState.setString(a,SPELLBREAKER_TARGET,"");
+            }
+            if(h(a,"arcane_ward/technomancer/specialization")&&!AbilityUtil.isMagicLike(e.getSource())){
+                FinalSpecializationSpellEventsV2.hardwareHit(a);
+            }
+
+            // Occult Mastery finisher: first occult damage during the burst applies Soul Burn.
+            if(h(a,"archmage/occultist/specialization")
+                    && n<=AbilityState.getLong(a,OCCULT_BURST)
+                    && isOccultDamage(e.getSource())){
+                effect(t,"irons_spellbooks:soul_burn",5,1);
+                AbilityState.setLong(a,OCCULT_BURST,0L);
+            }
 
             // RANGER
             if(pr&&h(a,"keen_instinct/marksman/specialization")&&AbilityState.getInt(a,MARKSMAN_STILL)>=40&&cd(a,"m62_marksman",160L)){
@@ -337,6 +365,23 @@ public final class FinalSpecializationEventsV2 {
             }
             if(h(d,"second_wind/ironheart/specialization")){
                 int r=AbilityState.getInt(d,RESOLVE);if(r>0)x*=Math.max(.80f,1f-.02f*r);
+            }
+
+            if(h(d,"manaflow/channeler/specialization")&&x>=d.getMaxHealth()*.15f){
+                AbilityState.setInt(d,"m62_flow",0);
+                if(m(d,"manaflow/channeler"))AbilityState.setLong(d,"m62_flow_penalty",n+100L);
+            }
+
+            if(AbilityUtil.isMagicLike(e.getSource())){
+                String el=magicElementFromDamage(e.getSource());
+                if(h(d,"arcane_ward/aegis/specialization")&&!el.isEmpty()){
+                    AbilityState.setString(d,AEGIS_SCHOOL,el);
+                    AbilityState.setLong(d,AEGIS_UNTIL,n+(m(d,"arcane_ward/aegis")?160L:120L));
+                }
+                if(h(d,"arcane_ward/spellbreaker/specialization")&&attacker!=null){
+                    AbilityState.setString(d,SPELLBREAKER_TARGET,attacker.getUUID().toString());
+                    AbilityState.setLong(d,SPELLBREAKER_UNTIL,n+(m(d,"arcane_ward/spellbreaker")?120L:80L));
+                }
             }
 
             // RANGER defense
@@ -491,6 +536,35 @@ public final class FinalSpecializationEventsV2 {
         if(n>AbilityState.getLong(p,EARTH_UNTIL))AbilityState.setInt(p,EARTH,0);
         if(n>AbilityState.getLong(p,FLOOD_UNTIL))AbilityState.setInt(p,FLOOD,0);
 
+        // Revenant reacts to the root Second Wind serial instead of creating a second death-save.
+        int secondWindSerial=AbilityState.getInt(p,"m62_second_wind_serial");
+        int revenantSeen=AbilityState.getInt(p,REV_SEEN);
+        if(!h(p,"second_wind/revenant/specialization")){
+            AbilityState.setInt(p,REV_SEEN,secondWindSerial);
+        }else if(secondWindSerial>revenantSeen){
+            AbilityState.setInt(p,REV_SEEN,secondWindSerial);
+            AbilityState.setLong(p,REV_UNTIL,n+160L);
+            AbilityState.setLong(p,REV_PENALTY_AT,n+160L);
+            AbilityState.setInt(p,REV_PENALTY_DONE,0);
+            vanilla(p,MobEffects.REGENERATION,6,1);
+            if(m(p,"second_wind/revenant"))effect(p,"irons_spellbooks:vigor",8,1);
+        }
+        if(h(p,"second_wind/revenant/specialization")
+                && AbilityState.getLong(p,REV_PENALTY_AT)>0
+                && n>AbilityState.getLong(p,REV_PENALTY_AT)
+                && AbilityState.getInt(p,REV_PENALTY_DONE)==0){
+            vanilla(p,MobEffects.WEAKNESS,12,1);
+            effect(p,"attributeslib:grievous",20,0);
+            AbilityState.setInt(p,REV_PENALTY_DONE,1);
+        }
+
+        // Channeler Flow expires after 4 sec. without a cast; Mastery turns the break into a short mana-cost penalty.
+        int flow=AbilityState.getInt(p,"m62_flow");
+        if(flow>0&&n-AbilityState.getLong(p,"m62_flow_last")>80L){
+            AbilityState.setInt(p,"m62_flow",0);
+            if(m(p,"manaflow/channeler"))AbilityState.setLong(p,"m62_flow_penalty",n+100L);
+        }
+
         // Timed attribute states.
         setAttr(p,"attributeslib:crit_chance","nb_reward",n<=AbilityState.getLong(p,NB_REWARD)?.20:0);
         setAttr(p,"minecraft:generic.movement_speed","nb_reward_move",n<=AbilityState.getLong(p,NB_REWARD)?.15:0);
@@ -503,6 +577,57 @@ public final class FinalSpecializationEventsV2 {
         setAttr(p,"irons_spellbooks:spell_power","stone_geo",n<=AbilityState.getLong(p,STONE_UNTIL)&&m(p,"unyielding/stoneguard")?.20:0);
         setAttr(p,"minecraft:generic.armor","spellguard_physical",n<=AbilityState.getLong(p,SPELLGUARD_UNTIL)&&m(p,"unyielding/spellguard")?-.15:0);
 
+        // Reservoir.
+        if(h(p,"manaflow/reservoir/specialization")){
+            double mana=manaRatio(p);
+            double power=0,resist=0,move=0;
+            if(mana>=0){
+                if(m(p,"manaflow/reservoir")&&mana>=.80){power=.30;resist=.15;}
+                else if(mana>=.70)power=.15;
+                if(m(p,"manaflow/reservoir")&&mana<.25){power=-.25;move=-.20;}
+            }
+            setAttr(p,"irons_spellbooks:spell_power","reservoir_power",power);
+            setAttr(p,"irons_spellbooks:spell_resist","reservoir_resist",resist);
+            setAttr(p,"minecraft:generic.movement_speed","reservoir_move",move);
+        }else{
+            setAttr(p,"irons_spellbooks:spell_power","reservoir_power",0);
+            setAttr(p,"irons_spellbooks:spell_resist","reservoir_resist",0);
+            setAttr(p,"minecraft:generic.movement_speed","reservoir_move",0);
+        }
+
+        // Arcanist Weave and temporary Mastery burst.
+        int weave=AbilityState.getInt(p,"m62_weave");
+        boolean weaveAlive=weave>0&&n-AbilityState.getLong(p,"m62_weave_last")<=120L;
+        setAttr(p,"irons_spellbooks:spell_power","weave_power",weaveAlive?weave*.04:0);
+        setAttr(p,"irons_spellbooks:cooldown_reduction","weave_cdr",weaveAlive?weave*.03:0);
+        boolean weaveBurst=n<=AbilityState.getLong(p,"m62_weave_burst_until");
+        setAttr(p,"irons_spellbooks:spell_power","weave_burst_power",weaveBurst?.30:0);
+        setAttr(p,"irons_spellbooks:cooldown_reduction","weave_burst_cdr",weaveBurst?.40:0);
+
+        // Occult finisher and Geomancer burst cleanup.
+        setOccultSchoolPower(p,"occult_burst",n<=AbilityState.getLong(p,OCCULT_BURST)?.30:0);
+        setAttr(p,"irons_spellbooks:spell_power","geo_burst",n<=AbilityState.getLong(p,"m62_geo_burst_until")?.35:0);
+
+        // Aegis specialization: one recognized school up, other recognized schools down only at Mastery.
+        String aegisSchool=AbilityState.getString(p,AEGIS_SCHOOL);
+        boolean aegisAlive=!aegisSchool.isEmpty()&&n<=AbilityState.getLong(p,AEGIS_UNTIL);
+        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature"}){
+            double v=aegisAlive?(school.equals(aegisSchool)?(m(p,"arcane_ward/aegis")?.35:.20):(m(p,"arcane_ward/aegis")?-.15:0)):0;
+            setElementSchoolResist(p,school,"aegis_"+school,v);
+        }
+        String burstSchool=AbilityState.getString(p,AEGIS_BURST_SCHOOL);
+        boolean aegisBurst=!burstSchool.isEmpty()&&n<=AbilityState.getLong(p,AEGIS_BURST_UNTIL);
+        for(String school:new String[]{"fire","ice","lightning","wind","earth","water","nature"}){
+            setElementSchoolPower(p,school,"aegis_burst_"+school,aegisBurst&&school.equals(burstSchool)?.25:0);
+        }
+
+        // Technomancer Mastery: Overcharged, then a short crash.
+        boolean overcharged=n<=AbilityState.getLong(p,"m62_overcharged");
+        boolean overchargeCrash=!overcharged&&n<=AbilityState.getLong(p,"m62_overcharge_crash");
+        setAttr(p,"irons_spellbooks:spell_power","technomancer_overcharge",overcharged?.20:(overchargeCrash?-.20:0));
+        setAttr(p,"minecraft:generic.armor","technomancer_overcharge_armor",overcharged?.15:0);
+        if(overchargeCrash)vanilla(p,MobEffects.MOVEMENT_SLOWDOWN,2,0);
+
         int tempo=AbilityState.getInt(p,TEMPO);
         setAttr(p,"minecraft:generic.attack_speed","tempo",tempo*.04);
         setAttrAdd(p,"attributeslib:crit_chance","tempo_crit",tempo*.02);
@@ -511,6 +636,11 @@ public final class FinalSpecializationEventsV2 {
         int occultSouls=AbilityState.getInt(p,OCCULT_SOUL);
         setOccultSchoolPower(p,"specter_soul",h(p,"ghost/specter/specialization")?specterSouls*.04:0);
         setOccultSchoolPower(p,"occult_soul",h(p,"archmage/occultist/specialization")?occultSouls*.05:0);
+
+        if(h(p,"archmage/elementalist/specialization")){
+            if(n>AbilityState.getLong(p,"m62_attune_until"))clearElementalPowers(p,"element_attune");
+            if(n>AbilityState.getLong(p,"m62_avatar_until"))clearElementalPowers(p,"element_avatar");
+        }
 
         int earth=AbilityState.getInt(p,EARTH);
         setElementSchoolPower(p,"earth","earth_charge",h(p,"enduring_tools/geomancer/specialization")?earth*.04:0);
@@ -563,7 +693,9 @@ public final class FinalSpecializationEventsV2 {
         setAttr(p,"minecraft:generic.max_health","feast_hp",feast?.10:0);
         setAttr(p,"attributeslib:healing_received","feast_heal",feast?.10:0);
         if(!feast&&AbilityState.getLong(p,FEAST_UNTIL)>0&&AbilityState.getInt(p,FEAST_WEAK_DONE)==0){vanilla(p,MobEffects.WEAKNESS,20,0);AbilityState.setInt(p,FEAST_WEAK_DONE,1);}
-        if(n<=AbilityState.getLong(p,FEAST_AURA)&&m(p,"prospector/feastmaster"))for(ServerPlayer ally:nearbyPlayers(p,8)){setTimedAllyBuff(ally,p,n);}
+        boolean feastAlly=hasNearbyFeastAura(p,n);
+        setAttr(p,"minecraft:generic.attack_damage","feast_ally_damage",feastAlly?.10:0);
+        setAttr(p,"minecraft:generic.movement_speed","feast_ally_move",feastAlly?.10:0);
 
         // Timed mastery penalties/effects.
         setAttr(p,"minecraft:generic.movement_speed","chef_slow",n<=AbilityState.getLong(p,"m62_chef_slow")?-.15:0);
@@ -572,9 +704,39 @@ public final class FinalSpecializationEventsV2 {
         else if(AbilityState.getLong(p,"m62_mirage_expose")>0)setAttr(p,"minecraft:generic.armor","mirage_expose",-.20);
     }
 
-    private static void setTimedAllyBuff(ServerPlayer ally,ServerPlayer source,long n){
-        String key="feast_ally_"+source.getUUID();setAttr(ally,"minecraft:generic.attack_damage",key,.10);setAttr(ally,"minecraft:generic.movement_speed",key+"_move",.10);
-        ally.getPersistentData().putLong("EldenWorldFeastUntil"+source.getUUID(),n+20L);
+    private static boolean hasNearbyFeastAura(ServerPlayer target,long n){
+        for(ServerPlayer source:nearbyPlayers(target,8)){
+            if(source!=target&&m(source,"prospector/feastmaster")&&n<=AbilityState.getLong(source,FEAST_AURA))return true;
+        }
+        return false;
+    }
+
+    private static String magicElementFromDamage(net.minecraft.world.damagesource.DamageSource source){
+        String z=damageType(source).toLowerCase(Locale.ROOT);
+        if(z.contains("fire")||z.contains("flame")||z.contains("burn"))return"fire";
+        if(z.contains("ice")||z.contains("frost")||z.contains("freeze"))return"ice";
+        if(z.contains("lightning")||z.contains("thunder")||z.contains("electric"))return"lightning";
+        if(z.contains("wind")||z.contains("air")||z.contains("gust"))return"wind";
+        if(z.contains("earth")||z.contains("geo"))return"earth";
+        if(z.contains("water")||z.contains("aqua"))return"water";
+        if(z.contains("nature")||z.contains("verdant")||z.contains("poison"))return"nature";
+        return"";
+    }
+
+    private static boolean isOccultDamage(net.minecraft.world.damagesource.DamageSource source){
+        String z=damageType(source).toLowerCase(Locale.ROOT);
+        return z.contains("blood")||z.contains("ender")||z.contains("eldritch")||z.contains("abyss");
+    }
+
+    private static double manaRatio(ServerPlayer p){
+        try{
+            Class<?> md=Class.forName("io.redspace.ironsspellbooks.api.magic.MagicData");
+            Object data=md.getMethod("getPlayerMagicData",net.minecraft.world.entity.player.Player.class).invoke(null,p);
+            double mana=((Number)data.getClass().getMethod("getMana").invoke(data)).doubleValue();
+            var at=ForgeRegistries.ATTRIBUTES.getValue(id("irons_spellbooks:max_mana"));
+            double max=at==null?0:p.getAttributeValue(at);
+            return max<=0?-1:mana/max;
+        }catch(Throwable ignored){return -1;}
     }
 
     private static ServerPlayer nearbyPaladin(ServerPlayer target,boolean masteryOnly){

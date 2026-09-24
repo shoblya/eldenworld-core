@@ -6,7 +6,7 @@ This directory is generated once from the packed RC source so M6.2 FINAL can be 
 - overrides/ = decompressed Java overrides from m62_tools.
 - The Passive Skill Tree topology is not to be redesigned for M6.2 FINAL.
 
-## M6.2.3 complete tree build
+## M6.2.4 capped specialization build
 
 - Correct all 378 internal `required_skills` references to use `eldenworld:`.
 - Preserve 18 subclass roots, 54 specializations, 54 masteries and the existing
@@ -15,6 +15,8 @@ This directory is generated once from the packed RC source so M6.2 FINAL can be 
 - Package the updated 589-node M6.2 main tree together with the 18 subclass
   trees. Preserve all main-tree skill IDs; every subclass opens from its
   corresponding main-tree keystone.
+- Enforce global limits of three Specializations and three Masteries per player
+  in the server skill-learn handler, without consuming skill points on denial.
 - Generate a distinct 16×16 class/attribute/branch icon for each of 396 nodes.
   These textures ship inside the Core JAR, which the client must load for icons.
 - World Tier stores the highest character level ever observed in a world,

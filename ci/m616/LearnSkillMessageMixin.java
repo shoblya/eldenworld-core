@@ -44,6 +44,22 @@ public abstract class LearnSkillMessageMixin {
             ci.cancel();
             return;
         }
+        if (KeystoneLimit.isSpecialization(skillId) && !RequirementChecker.hasSkill(player, skillId)
+                && !KeystoneLimit.canLearnSpecialization(player)) {
+            context.setPacketHandled(true);
+            player.sendSystemMessage(Component.literal("Лимит специализаций: "
+                    + KeystoneLimit.learnedSpecializationCount(player) + "/3.").withStyle(ChatFormatting.RED));
+            ci.cancel();
+            return;
+        }
+        if (KeystoneLimit.isMastery(skillId) && !RequirementChecker.hasSkill(player, skillId)
+                && !KeystoneLimit.canLearnMastery(player)) {
+            context.setPacketHandled(true);
+            player.sendSystemMessage(Component.literal("Лимит мастерств: "
+                    + KeystoneLimit.learnedMasteryCount(player) + "/3.").withStyle(ChatFormatting.RED));
+            ci.cancel();
+            return;
+        }
         if (requirement == null) return;
 
         List<String> unmet = RequirementChecker.unmet(player, requirement);

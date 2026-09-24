@@ -49,7 +49,7 @@ jobs:
           p=r/'gradle.properties'
           s=p.read_text()
           import re
-          s=re.sub(r'mod_version=.*', 'mod_version=0.6.2.2-m6.2.2-restored', s)
+          s=re.sub(r'mod_version=.*', 'mod_version=0.6.2.3-m6.2.3-complete', s)
           p.write_text(s)
           PY
 
@@ -136,20 +136,48 @@ jobs:
           set -euo pipefail
           rm -rf dist
           mkdir -p dist/passive/data/eldenworld dist/passive/data/eldenworld_core
+          unzip -q ci/m62_main_tree.zip -d dist/passive
           cp -r m5/src/main/resources/data/eldenworld/skills dist/passive/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld/skill_trees dist/passive/data/eldenworld/
           cp -r m5/src/main/resources/data/eldenworld_core/skill_requirements dist/passive/data/eldenworld_core/
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          base=Path('dist/passive/data')
+          main_skills={json.loads(p.read_text())['id'] for p in (base/'skilltree/skills').glob('*.json')}
+          sub_skills={json.loads(p.read_text())['id'] for p in (base/'eldenworld/skills').glob('*.json')}
+          assert len(main_skills)==589 and len(sub_skills)==396 and not main_skills & sub_skills
+          tree=json.loads((base/'skilltree/skill_trees/soldier.json').read_text())
+          assert tree['id']=='skilltree:soldier' and set(tree['skillIds'])==main_skills
+          assert sum(bool(json.loads(p.read_text())['skillIds']) for p in base.glob('*/skill_trees/*.json'))==19
+          requirements=[json.loads(p.read_text()) for p in (base/'eldenworld_core/skill_requirements').glob('*.json')]
+          assert len(requirements)==396
+          for node in requirements:
+              assert set(node['required_skills']) <= main_skills | sub_skills, node['skill']
+          selector=Path('ci/m613_client/EldenWorldSkillTreeSelectionScreen.java').read_text()
+          unlocks=dict(re.findall(r'unlock\(map, "([^"]+)", "([^"]+)"\)',selector))
+          assert len(unlocks)==18
+          reqs={node['skill']:node for node in requirements}
+          for name,keystone in unlocks.items():
+              assert keystone in main_skills
+              assert keystone in reqs['eldenworld:'+name+'/root']['required_skills']
+              subtree=json.loads((base/f'eldenworld/skill_trees/{name}.json').read_text())
+              assert len(subtree['skillIds'])==22
+          root=json.loads((base/'skilltree/skills/enchanter_subclass_1_mastery.json').read_text())
+          assert any('30%' in line['text'] for line in root['description'])
+          print('Validated: 589 main skills, 396 subclass skills, 19 visible trees, 18 matching unlocks')
+          PY
           cat > dist/passive/pack.mcmeta <<'EOF'
-          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.2 RESTORED Passive Skill Tree"}}
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.3 COMPLETE Passive Skill Tree"}}
           EOF
-          (cd dist/passive && zip -qr ../EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip .)
+          (cd dist/passive && zip -qr ../EldenWorld-Passive-Tree-M6.2.3-COMPLETE.zip .)
 
       - name: Package Mob Scaling datapack
         run: |
           set -euo pipefail
           mkdir -p dist/scaling/data/eldenworld_scaling/eldenworld_scaling/profiles
           cat > dist/scaling/pack.mcmeta <<'EOF'
-          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.2 RESTORED Mob Scaling"}}
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.2.3 COMPLETE Mob Scaling"}}
           EOF
           cat > dist/scaling/data/eldenworld_scaling/eldenworld_scaling/profiles/default.json <<'EOF'
           {
@@ -175,13 +203,15 @@ jobs:
           for tag in exclude include_hostiles elites standard_bosses benchmark_bosses; do
             printf '{"replace":false,"values":[]}\n' > "dist/scaling/data/eldenworld_scaling/tags/entity_types/${tag}.json"
           done
-          (cd dist/scaling && zip -qr ../EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip .)
+          (cd dist/scaling && zip -qr ../EldenWorld-Mob-Scaling-M6.2.3-COMPLETE.zip .)
 
       - name: Add selector assets and translations
         run: |
           set -euo pipefail
           mkdir -p m5/src/main/java/com/eldenworld/core/client
           cp ci/m613_client/EldenWorldSkillTreeSelectionScreen.java m5/src/main/java/com/eldenworld/core/client/
+          mkdir -p m5/src/main/resources/assets/skilltree/textures/icons/skill_tree
+          cp ci/base_tree_icon.png m5/src/main/resources/assets/skilltree/textures/icons/skill_tree/soldier.png
           base64 -d ci/m613_client/ui_assets.tar.gz.b64 > /tmp/m613_ui_assets.tar.gz
           tar -xzf /tmp/m613_ui_assets.tar.gz -C m5/src/main/resources
 
@@ -191,7 +221,7 @@ jobs:
           rm -rf m5/src/main/resources/data/eldenworld/skill_trees
           rm -rf m5/src/main/resources/data/eldenworld_core/skill_requirements
 
-      - name: Build M6.2.2 RESTORED candidate
+      - name: Build M6.2.3 COMPLETE candidate
         working-directory: m5
         run: gradle build --stacktrace
 
@@ -205,18 +235,18 @@ jobs:
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/balance/WorldScalingEvents.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationEventsV2.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationSpellEventsV2.class'
-          cp "$JAR" "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.2-RESTORED.jar"
+          cp "$JAR" "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.3-COMPLETE.jar"
           mkdir -p "$GITHUB_WORKSPACE/dist/full"
-          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.2-RESTORED.jar" "$GITHUB_WORKSPACE/dist/full/"
-          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip" "$GITHUB_WORKSPACE/dist/full/"
-          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2.3-COMPLETE.jar" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Passive-Tree-M6.2.3-COMPLETE.zip" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Mob-Scaling-M6.2.3-COMPLETE.zip" "$GITHUB_WORKSPACE/dist/full/"
           cat > "$GITHUB_WORKSPACE/dist/full/README.txt" <<'EOF'
-          EldenWorld M6.2.2 RESTORED candidate
+          EldenWorld M6.2.3 COMPLETE candidate
           Minecraft 1.20.1 Forge
 
-          1) Put EldenWorld-Core-M6.2.2-RESTORED.jar into mods on server and client where required by your current EldenWorld setup.
-          2) Put EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip into the world's datapacks folder.
-          3) Put EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip into the world's datapacks folder.
+          1) Put EldenWorld-Core-M6.2.3-COMPLETE.jar into mods on server and client where required by your current EldenWorld setup.
+          2) Put EldenWorld-Passive-Tree-M6.2.3-COMPLETE.zip into the world's datapacks folder. It includes the 589-node main tree and all 18 unlocked subclass trees.
+          3) Put EldenWorld-Mob-Scaling-M6.2.3-COMPLETE.zip into the world's datapacks folder.
           4) Remove older EldenWorld Core / Passive Tree / Mob Scaling M6.x copies to avoid duplicate data.
 
           World Tier stores the highest character level ever recorded in this world (max 150).
@@ -227,14 +257,14 @@ jobs:
           Mob Scaling entity tags (exclude, include_hostiles, elites, standard_bosses,
           benchmark_bosses) are editable under data/eldenworld_scaling/tags/entity_types/.
           EOF
-          (cd "$GITHUB_WORKSPACE/dist/full" && zip -qr ../EldenWorld-M6.2.2-RESTORED.zip .)
+          (cd "$GITHUB_WORKSPACE/dist/full" && zip -qr ../EldenWorld-M6.2.3-COMPLETE.zip .)
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EldenWorld-M6.2.2-RESTORED-Candidate
+          name: EldenWorld-M6.2.3-COMPLETE-Candidate
           path: |
-            dist/EldenWorld-Core-M6.2.2-RESTORED.jar
-            dist/EldenWorld-Passive-Tree-M6.2.2-RESTORED.zip
-            dist/EldenWorld-Mob-Scaling-M6.2.2-RESTORED.zip
-            dist/EldenWorld-M6.2.2-RESTORED.zip
+            dist/EldenWorld-Core-M6.2.3-COMPLETE.jar
+            dist/EldenWorld-Passive-Tree-M6.2.3-COMPLETE.zip
+            dist/EldenWorld-Mob-Scaling-M6.2.3-COMPLETE.zip
+            dist/EldenWorld-M6.2.3-COMPLETE.zip
           if-no-files-found: error

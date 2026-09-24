@@ -16,6 +16,11 @@ meta={
 'master_builder':('Builder','skilltree:cook_mastery','builder'),'enduring_tools':('Miner','skilltree:cook_subclass_1_mastery','builder'),'prospector':('Cook','skilltree:cook_subclass_2_mastery','builder'),
 'wayfarer':('Wayfarer','skilltree:enchanter_mastery','adventurer'),'treasure_hunter':('Treasure Hunter','skilltree:enchanter_subclass_1_mastery','adventurer'),'survivor':('Survivor','skilltree:enchanter_subclass_2_mastery','adventurer')}
 icons={'rogue':'minecraft:textures/item/iron_sword.png','warrior':'minecraft:textures/item/shield.png','ranger':'minecraft:textures/item/bow.png','mage':'minecraft:textures/item/enchanted_book.png','builder':'minecraft:textures/item/iron_pickaxe.png','adventurer':'minecraft:textures/item/compass_00.png'}
+root_icons={
+'master_builder':'minecraft:textures/block/bricks.png',
+'enduring_tools':'minecraft:textures/item/diamond_pickaxe.png',
+'prospector':'farmersdelight:textures/item/cooking_pot.png'
+}
 branch_icons={'nightblade':'minecraft:textures/item/iron_sword.png','riftwalker':'minecraft:textures/item/ender_pearl.png','mirage':'minecraft:textures/item/echo_shard.png','assassin':'minecraft:textures/item/stone_sword.png','phantom':'minecraft:textures/item/phantom_membrane.png','specter':'minecraft:textures/item/soul_lantern.png','duelist':'minecraft:textures/item/golden_sword.png','predator':'minecraft:textures/item/iron_axe.png','trickster':'minecraft:textures/item/snowball.png','berserker':'minecraft:textures/item/diamond_axe.png','bloodguard':'minecraft:textures/item/shield.png','colossus':'minecraft:textures/item/netherite_sword.png','bulwark':'minecraft:textures/item/shield.png','thorned_guard':'minecraft:textures/item/sweet_berries.png','spellguard':'minecraft:textures/item/totem_of_undying.png','revenant':'minecraft:textures/item/totem_of_undying.png','vanguard':'minecraft:textures/item/gold_ingot.png','ironheart':'minecraft:textures/item/iron_ingot.png','marksman':'minecraft:textures/item/bow.png','hunter':'minecraft:textures/item/crossbow_standby.png','sentinel':'minecraft:textures/item/spectral_arrow.png','gale_dancer':'minecraft:textures/item/feather.png','stormshot':'minecraft:textures/item/trident.png','skirmisher':'minecraft:textures/item/arrow.png','beastmaster':'minecraft:textures/item/bone.png','dragon_rider':'minecraft:textures/item/saddle.png','trailblazer':'minecraft:textures/item/compass_00.png','elementalist':'minecraft:textures/item/blaze_powder.png','occultist':'minecraft:textures/item/ender_eye.png','arcanist':'minecraft:textures/item/enchanted_book.png','channeler':'minecraft:textures/item/amethyst_shard.png','reservoir':'minecraft:textures/item/lapis_lazuli.png','overcaster':'minecraft:textures/item/fire_charge.png','aegis':'minecraft:textures/item/shield.png','spellbreaker':'minecraft:textures/item/milk_bucket.png','runewarden':'minecraft:textures/item/enchanted_book.png','architect':'minecraft:textures/item/brick.png','engineer':'minecraft:textures/item/redstone.png','fortifier':'minecraft:textures/item/iron_ingot.png','smith':'minecraft:textures/item/iron_ingot.png','temperer':'minecraft:textures/item/netherite_ingot.png','runesmith':'minecraft:textures/item/enchanted_book.png','deep_delver':'minecraft:textures/item/iron_pickaxe.png','gem_hunter':'minecraft:textures/item/diamond.png','excavator':'minecraft:textures/item/diamond_pickaxe.png','dimension_walker':'minecraft:textures/item/ender_eye.png','pilgrim':'minecraft:textures/item/leather_boots.png','cartographer':'minecraft:textures/item/map.png','relic_seeker':'minecraft:textures/item/totem_of_undying.png','fortune_hunter':'minecraft:textures/item/emerald.png','archaeologist':'minecraft:textures/item/brush.png','last_stand':'minecraft:textures/item/golden_apple.png','wastelander':'minecraft:textures/item/leather_chestplate.png','monster_slayer':'minecraft:textures/item/diamond_sword.png'}
 branch_icons.update({
 'stoneguard':'minecraft:textures/item/amethyst_shard.png',
@@ -56,8 +61,8 @@ profiles.update({
 
 def bonus(attr,amount,op,key):
  return {'type':'skilltree:attribute','attribute':attr,'id':str(uuid.uuid5(uuid.NAMESPACE_URL,'eldenworld:m62:'+key)),'name':'EldenWorld M6.2 stat','amount':amount,'operation':op,'player_multiplier':{'type':'skilltree:none'},'player_condition':{'type':'skilltree:none'}}
-def write_node(idp,title,x,y,start,connections,group,kind,branch=None,desc='',stat=None,extra_bonuses=None):
- ic=icons[group] if branch is None else branch_icons.get(slug(branch),icons[group])
+def write_node(idp,title,x,y,start,connections,group,kind,branch=None,desc='',stat=None,extra_bonuses=None,root_key=None):
+ ic=(root_icons.get(root_key,icons[group]) if branch is None else branch_icons.get(slug(branch),icons[group]))
  bonuses=[]
  if stat:
   n,a,v,o,text=stat; bonuses=[bonus(a,v,o,idp)]
@@ -77,7 +82,7 @@ for key,(disp,parent,group) in meta.items():
  branches=by_tree[key]; assert len(branches)==3
  rootid=f'{key}/root'; ids=['eldenworld:'+rootid]
  first=[f"{key}/{slug(r['branch'])}/stat_1" for r in branches]
- write_node(rootid,disp,0,0,True,first,group,'start',desc=f'{disp}: стартовая точка. Выберите одну из трёх специализаций. Внутренние ноды ограничены порядком ветки и стоимостью skill points, без отдельного level-gate.')
+ write_node(rootid,disp,0,0,True,first,group,'start',desc=f'{disp}: стартовая точка. Выберите одну из трёх специализаций. Внутренние ноды ограничены порядком ветки и стоимостью skill points, без отдельного level-gate.',root_key=key)
  req(rootid,40,parent)
  for bi,r in enumerate(branches):
   b=r['branch']; profile=profiles[r['profile']]; ang=2*math.pi*bi/3-math.pi/2; ux,uy=math.cos(ang),math.sin(ang)

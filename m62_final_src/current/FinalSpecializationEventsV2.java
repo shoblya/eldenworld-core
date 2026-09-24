@@ -633,7 +633,7 @@ public final class FinalSpecializationEventsV2 {
         setAttr(p,"minecraft:generic.attack_speed","berserker_mastery",h(p,"juggernaut/berserker/specialization")&&m(p,"juggernaut/berserker")&&p.getHealth()<=p.getMaxHealth()*.50?.10:0);
         setAttr(p,"minecraft:generic.movement_speed","blood_slow",AbilityState.getInt(p,BLOOD)>=3?-.12:0);
         setAttr(p,"minecraft:generic.attack_speed","resolve_slow",AbilityState.getInt(p,RESOLVE)>=5&&m(p,"second_wind/ironheart")?-.15:0);
-        setAttr(p,"irons_spellbooks:spell_power","stone_geo",n<=AbilityState.getLong(p,STONE_UNTIL)&&m(p,"unyielding/stoneguard")?.20:0);
+        setElementSchoolPower(p,"earth","stone_geo",n<=AbilityState.getLong(p,STONE_UNTIL)&&m(p,"unyielding/stoneguard")?.20:0);
         setAttr(p,"minecraft:generic.armor","spellguard_physical",n<=AbilityState.getLong(p,SPELLGUARD_UNTIL)&&m(p,"unyielding/spellguard")?-.15:0);
 
         // Reservoir.

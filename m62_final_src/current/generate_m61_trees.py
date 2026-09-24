@@ -106,7 +106,7 @@ for key,(disp,parent,group) in meta.items():
    extra=r.get('downside') if kind=='mastery' and isinstance(r.get('downside'),list) else None
    write_node(idp,title,82*(i+1)*ux,82*(i+1)*uy,False,[prev]+nxt,group,kind,b,desc,stat,extra)
    req(idp,levels[i],parent,prev); prev=idp
- (trees/f'{key}.json').write_text(json.dumps({'id':'eldenworld:'+key,'skills':ids,'backgroundTexture':'skilltree:textures/screen/background.png'},indent=2))
+ (trees/f'{key}.json').write_text(json.dumps({'id':'eldenworld:'+key,'skillIds':ids,'backgroundTexture':'skilltree:textures/screen/background.png'},indent=2))
 count=len(list(skills.glob('*.json')))
 assert count==396,count
 assert len(list(trees.glob('*.json')))==18

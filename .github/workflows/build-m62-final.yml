@@ -83,7 +83,36 @@ jobs:
           assert all(x['min_pst_level']==40 for x in roots)
           assert all(x['min_pst_level']==0 for x in inner)
           assert len({x['skill'] for x in data})==396
-          print('requirements OK:',len(roots),'roots,',len(inner),'inner nodes')
+
+          rows=json.loads(Path('m62_final_src/current/m6_specializations.json').read_text())
+          assert len(rows)==54
+          assert len({(r['tree'],r['branch']) for r in rows})==54
+          assert len({r['tree'] for r in rows})==18
+          code=(Path('m62_final_src/current/FinalSpecializationEventsV2.java').read_text()
+                +'\n'+Path('m62_final_src/current/FinalSpecializationSpellEventsV2.java').read_text())
+          def slug(v):
+              return v.lower().replace(' ','_').replace("'","").replace('/','_')
+          missing=[]
+          mastery_missing=[]
+          for r in rows:
+              base=f"{r['tree']}/{slug(r['branch'])}"
+              if base not in code:
+                  missing.append(base)
+              # Mastery logic can be referenced through m(..., base), mastery(..., base)
+              # or an explicit /mastery skill lookup.
+              if (base+'/mastery') not in code and not __import__('re').search(
+                    r'(?:\bm\s*\([^\n]*"|\bmastery\s*\([^\n]*")'+__import__('re').escape(base)+r'"', code):
+                  mastery_missing.append(base)
+          assert not missing, missing
+          assert not mastery_missing, mastery_missing
+
+          scaling=Path('m62_final_src/overrides/WorldScalingEvents.java').read_text()
+          assert 'WorldProgressData' in scaling and 'MaxLevelReached' in scaling
+          assert 'private static int computeTier(MinecraftServer server)' not in scaling
+          rootsrc=Path('m62_final_src/overrides/KeystoneAbilityEvents.java').read_text()
+          for token in ('TREASURE_XP_BANK','PlayerBrewedPotionEvent','current * 0.70f','m62_second_wind_serial'):
+              assert token in rootsrc, token
+          print('requirements OK:',len(roots),'roots,',len(inner),'inner nodes; 54/54 specialization+mastery coverage OK')
           PY
 
       - name: Package Passive Tree datapack
@@ -98,6 +127,35 @@ jobs:
           {"pack":{"pack_format":15,"description":"EldenWorld M6.2 FINAL Passive Skill Tree"}}
           EOF
           (cd dist/passive && zip -qr ../EldenWorld-Passive-Tree-M6.2-FINAL.zip .)
+
+      - name: Package Mob Scaling datapack
+        run: |
+          set -euo pipefail
+          mkdir -p dist/scaling/data/eldenworld_scaling/eldenworld_scaling/profiles
+          cat > dist/scaling/pack.mcmeta <<'EOF'
+          {"pack":{"pack_format":15,"description":"EldenWorld M6.2 FINAL Mob Scaling"}}
+          EOF
+          cat > dist/scaling/data/eldenworld_scaling/eldenworld_scaling/profiles/default.json <<'EOF'
+          {
+            "thresholds": [0,30,40,50,60,70,80,90,100,110,120,130,140,150],
+            "common_hp": [1,1.2,1.4,1.6,1.9,2.2,2.5,2.8,3.1,3.4,3.7,4.0,4.3,4.5],
+            "common_damage": [1,1.3,1.6,1.9,2.3,2.7,3.1,3.5,3.9,4.3,4.7,5.1,5.5,6.0],
+            "elite_hp": [1,1.4,1.7,2.0,2.3,2.6,3.0,3.3,3.6,3.9,4.2,4.5,4.8,5.0],
+            "elite_damage": [1,1.5,1.9,2.3,2.7,3.1,3.6,4.1,4.6,5.0,5.4,5.8,6.2,6.5],
+            "boss_hp": [1,1.5,1.8,2.1,2.4,2.7,3.0,3.3,3.5,3.7,3.9,4.1,4.3,4.5],
+            "boss_damage": [1,1.6,2.0,2.4,2.8,3.2,3.7,4.2,4.7,5.1,5.5,5.9,6.3,7.0],
+            "benchmark_hp": [1,1.04,1.08,1.12,1.16,1.20,1.24,1.28,1.32,1.36,1.40,1.43,1.47,1.50],
+            "benchmark_damage": [1,1.04,1.08,1.12,1.16,1.20,1.24,1.28,1.32,1.36,1.40,1.43,1.47,1.50],
+            "boss_armor": [0,1,2,3,4,5,6,7,8,9,10,11,12,14],
+            "boss_armor_shred": [0,0,0,0.05,0.05,0.10,0.10,0.12,0.15,0.17,0.20,0.22,0.25,0.30],
+            "boss_knockback_resist": [0,0.05,0.10,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.55,0.60,0.70],
+            "boss_control_resist": [0,0,0,0.10,0.15,0.20,0.30,0.35,0.40,0.45,0.50,0.55,0.60,0.65],
+            "boss_antiheal": [0,0,0,0,0,0,0.05,0.05,0.10,0.10,0.15,0.15,0.20,0.20],
+            "boss_projectile_resist": [0,0,0,0,0,0,0,0,0.10,0.10,0.15,0.15,0.15,0.20],
+            "benchmark_extra_factor": 0.50
+          }
+          EOF
+          (cd dist/scaling && zip -qr ../EldenWorld-Mob-Scaling-M6.2-FINAL.zip .)
 
       - name: Add selector assets and translations
         run: |
@@ -128,6 +186,22 @@ jobs:
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationEventsV2.class'
           unzip -l "$JAR" | grep -q 'com/eldenworld/core/specialization/FinalSpecializationSpellEventsV2.class'
           cp "$JAR" "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2-FINAL.jar"
+          mkdir -p "$GITHUB_WORKSPACE/dist/full"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Core-M6.2-FINAL.jar" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Passive-Tree-M6.2-FINAL.zip" "$GITHUB_WORKSPACE/dist/full/"
+          cp "$GITHUB_WORKSPACE/dist/EldenWorld-Mob-Scaling-M6.2-FINAL.zip" "$GITHUB_WORKSPACE/dist/full/"
+          cat > "$GITHUB_WORKSPACE/dist/full/README.txt" <<'EOF'
+          EldenWorld M6.2 FINAL candidate
+          Minecraft 1.20.1 Forge
+
+          1) Put EldenWorld-Core-M6.2-FINAL.jar into mods on server and client where required by your current EldenWorld setup.
+          2) Put EldenWorld-Passive-Tree-M6.2-FINAL.zip into the world's datapacks folder.
+          3) Put EldenWorld-Mob-Scaling-M6.2-FINAL.zip into the world's datapacks folder.
+          4) Remove older EldenWorld Core / Passive Tree / Mob Scaling M6.x copies to avoid duplicate data.
+
+          World Tier is persistent and irreversible: it stores the highest player level ever reached in this world (max 150).
+          EOF
+          (cd "$GITHUB_WORKSPACE/dist/full" && zip -qr ../EldenWorld-M6.2-FINAL.zip .)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,4 +209,6 @@ jobs:
           path: |
             dist/EldenWorld-Core-M6.2-FINAL.jar
             dist/EldenWorld-Passive-Tree-M6.2-FINAL.zip
+            dist/EldenWorld-Mob-Scaling-M6.2-FINAL.zip
+            dist/EldenWorld-M6.2-FINAL.zip
           if-no-files-found: error
